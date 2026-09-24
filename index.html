@@ -45,20 +45,46 @@ body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:'Ma
 .wave canvas{flex:1;min-width:0;width:100%;height:100%;display:block}
 .live{animation:beat var(--beat,1s) ease-in-out infinite}
 @keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}}
+[hidden]{display:none!important}
+.hbar{display:flex;align-items:center;gap:8px;flex:none}
+.icon{position:relative;display:grid;place-items:center;width:38px;height:38px;flex:none;background:none;border:0;border-radius:10px;color:var(--text);cursor:pointer}
+.icon svg{width:22px;height:22px}
+.icon:focus-visible{outline:2px solid var(--cyan-hi);outline-offset:2px}
+.hbar .icon{background:var(--card);border:1px solid rgba(255,255,255,.12)}
+.sq{width:44px;height:44px;background:#2b2b33;border-radius:12px}
+.banner{display:grid;place-items:center;height:clamp(120px,30vw,170px);background:#fdd5d8;border-radius:22px}
+.banner svg{width:88px;height:88px;fill:var(--heart)}
+.cal{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cal h2{margin:0;font-size:1.2rem;font-weight:800}
+.nav{display:flex}
+.nav input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.day{display:grid;justify-items:center;gap:6px;padding:0;background:none;border:0;color:var(--text);font:inherit;font-size:.9rem;cursor:pointer}
+.day b{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-weight:700}
+.day.on b{background:var(--cyan)}
+.tbl{border-radius:10px;overflow:hidden;background:#0d0d16}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr 1.5fr;align-items:center;gap:8px;padding:8px 12px;font-size:.95rem}
+#rows .row:nth-child(even){background:rgba(255,255,255,.04)}
+.row.head{padding:14px 12px;background:#48485f;font-weight:600}
+.sp svg{display:block;width:100%;height:34px}
+.empty{margin:0;padding:24px;text-align:center;color:#9ca3af}
 @media (prefers-reduced-motion:reduce){.live{animation:none}.gauge .arc{transition:none}}
 </style>
 </head>
 <body>
-<main class="app">
+<main class="app" id="home">
   <header class="header">
     <h1 id="title">Revisa tu pulsoximetría</h1>
-    <label class="lang">
+    <div class="hbar">
+      <button class="icon" id="toHist" type="button" aria-label="Historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
+      <label class="lang">
       <select id="lang" aria-label="Idioma">
         <option value="es">Español</option>
         <option value="en">English</option>
       </select>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
     </label>
+    </div>
   </header>
 
   <button class="connect" id="connect" type="button">Conectar</button>
@@ -87,11 +113,29 @@ body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:'Ma
   <section class="wave"><canvas id="wave" role="img" aria-label="Pletismografía"></canvas></section>
 </main>
 
+<main class="app" id="hist" hidden>
+  <header><button class="icon sq" id="back" type="button" aria-label="Volver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></header>
+  <div class="banner" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/><path d="M5 12h3.5l1.5-3 2.5 6 1.8-3H19" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="cal">
+    <h2 id="hMonth"></h2>
+    <div class="nav">
+      <label class="icon" aria-label="Fecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><input type="date" id="pick"></label>
+      <button class="icon" id="prev" type="button" aria-label="Semana anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="icon" id="next" type="button" aria-label="Semana siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+  </div>
+  <div class="week" id="week"></div>
+  <div class="tbl">
+    <div class="row head"><span id="cT">Hora</span><span>SpO2</span><span>Bpm</span><span id="cG">Gráfica</span></div>
+    <div id="rows"></div>
+  </div>
+</main>
+
 <script>
 /* ---------- Textos (i18n mínimo) ---------- */
 const I18N={
-  es:{title:'Revisa tu pulsoximetría',connect:'Conectar',connecting:'Conectando…',disconnect:'Desconectar',nosupport:'Bluetooth no disponible',failed:'No se pudo conectar'},
-  en:{title:'Check your pulse oximetry',connect:'Connect',connecting:'Connecting…',disconnect:'Disconnect',nosupport:'Bluetooth unavailable',failed:'Could not connect'}
+  es:{title:'Revisa tu pulsoximetría',connect:'Conectar',connecting:'Conectando…',disconnect:'Desconectar',nosupport:'Bluetooth no disponible',failed:'No se pudo conectar',time:'Hora',graph:'Gráfica',empty:'Sin registros este día'},
+  en:{title:'Check your pulse oximetry',connect:'Connect',connecting:'Connecting…',disconnect:'Disconnect',nosupport:'Bluetooth unavailable',failed:'Could not connect',time:'Time',graph:'Graph',empty:'No records this day'}
 };
 
 /* ---------- Capa BLE (invisible): perfiles estándar Bluetooth SIG ----------
@@ -99,7 +143,9 @@ const I18N={
    Heart Rate Service 0x180D → Heart Rate Measurement 0x2A37 (respaldo para Bpm)
    Si tu dispositivo usa un servicio propietario, cambia UUID y parsers aquí. */
 const BLE={
-  UUID:{plx:0x1822,plxCont:0x2A5F,hr:0x180D,hrm:0x2A37},
+  // ESP32 "MarkII_PPG": Nordic UART (nus) envía texto "BPM,IR[,SPO2]\n" por notificaciones
+  UUID:{plx:0x1822,plxCont:0x2A5F,hr:0x180D,hrm:0x2A37,nus:'6e400001-b5a3-f393-e0a9-e50e24dcca9e',nusTx:'6e400003-b5a3-f393-e0a9-e50e24dcca9e'},
+  rx:'',
   device:null,
   get supported(){return !!navigator.bluetooth},
   sfloat(dv,o){ // IEEE-11073 SFLOAT de 16 bits
@@ -112,10 +158,20 @@ const BLE={
   },
   parsePLX(dv){return{spo2:this.sfloat(dv,1),bpm:this.sfloat(dv,3)}},
   parseHRM(dv){return{bpm:(dv.getUint8(0)&1)?dv.getUint16(1,true):dv.getUint8(1)}},
+  parseNUS(dv){ // acumula texto y devuelve una lectura por cada línea "BPM,IR[,SPO2]"
+    this.rx+=new TextDecoder().decode(dv);
+    const out=[];let i;
+    while((i=this.rx.indexOf('\n'))>=0){
+      const [bpm,ir,spo2]=this.rx.slice(0,i).split(',').map(Number);
+      this.rx=this.rx.slice(i+1);
+      if(Number.isFinite(ir))out.push({bpm,ir,spo2});
+    }
+    return out;
+  },
   async connect(onData,onLost){
     if(!this.supported)throw new Error('unsupported');
     const U=this.UUID;
-    this.device=await navigator.bluetooth.requestDevice({filters:[{services:[U.plx]},{services:[U.hr]}],optionalServices:[U.plx,U.hr]});
+    this.device=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MarkII'},{services:[U.nus]},{services:[U.plx]},{services:[U.hr]}],optionalServices:[U.nus,U.plx,U.hr]});
     this.device.addEventListener('gattserverdisconnected',onLost);
     const gatt=await this.device.gatt.connect();
     const sub=async(svc,chr,parse)=>{
@@ -123,8 +179,12 @@ const BLE={
       c.addEventListener('characteristicvaluechanged',e=>onData(parse(e.target.value)));
       await c.startNotifications();
     };
-    try{await sub(U.plx,U.plxCont,d=>this.parsePLX(d))}
-    catch{await sub(U.hr,U.hrm,d=>this.parseHRM(d))}
+    this.rx='';
+    try{await sub(U.nus,U.nusTx,d=>this.parseNUS(d))}
+    catch{
+      try{await sub(U.plx,U.plxCont,d=>this.parsePLX(d))}
+      catch{await sub(U.hr,U.hrm,d=>this.parseHRM(d))}
+    }
   },
   disconnect(){if(this.device&&this.device.gatt.connected)this.device.gatt.disconnect()}
 };
@@ -162,11 +222,25 @@ function reset(){
   Wave.live=false;Wave.bpm=72;
 }
 
+/* ---------- Datos del ESP32 (MarkII_PPG): "BPM,IR\n" ---------- */
+const WAVE_INVERT=false; // pon true si la onda se ve al revés
+let base=null,lastData=0,ses=null;
+function feedIR(ir){ // quita la componente continua del IR para dejar solo la onda de pulso
+  base=base===null?ir:base+(ir-base)*.01;
+  Wave.pushSample((WAVE_INVERT?-1:1)*(ir-base));
+}
+function handle(d){
+  [].concat(d).forEach(r=>{lastData=Date.now();update(r);ses=ses||{};if(r.bpm>0)ses.bpm=Math.round(r.bpm);if(Number.isFinite(r.spo2))ses.spo2=r.spo2;if(Number.isFinite(r.ir))feedIR(r.ir)});
+}
+setInterval(()=>{ // el ESP32 deja de enviar si no hay dedo: limpiar tras 3 s sin datos
+  if(state==='on'&&lastData&&Date.now()-lastData>3000){commit();lastData=0;base=null;reset();Wave.live=true;Wave.buf=[];Wave.draw()}
+},1000);
+
 ui.btn.addEventListener('click',async()=>{
   if(state==='on'){BLE.disconnect();return}
   setState('busy');
   try{
-    await BLE.connect(update,()=>{setState('idle');reset()});
+    await BLE.connect(handle,()=>{commit();setState('idle');reset();base=null;lastData=0});
     setState('on');
   }catch(err){
     setState('idle');
@@ -177,7 +251,7 @@ ui.btn.addEventListener('click',async()=>{
 
 $('#lang').addEventListener('change',e=>{
   lang=e.target.value;document.documentElement.lang=lang;
-  ui.title.textContent=t('title');renderBtn();
+  ui.title.textContent=t('title');renderBtn();renderHistory();
 });
 
 /* ---------- Onda pletismográfica (marcador de posición) ----------
@@ -213,6 +287,55 @@ const Wave={
   pushSample(v){this.live=true;this.push(v);this.draw()}
 };
 Wave.init();
+
+/* ---------- Historial: se guarda en este teléfono con fecha y hora ---------- */
+const KEY='pulsoximetria:registros';
+const Store={
+  load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch{return[]}},
+  add(r){try{localStorage.setItem(KEY,JSON.stringify([r,...this.load()].slice(0,300)))}catch{}}
+};
+function commit(){ // guarda la última lectura de la toma (al quitar el dedo o desconectar)
+  if(!ses||!(ses.bpm>0))return;
+  const b=Wave.live?Wave.buf.slice(-120):[];let w=[];
+  if(b.length>=30){
+    const lo=Math.min(...b),hi=Math.max(...b),k=b.length/30;
+    w=Array.from({length:30},(_,i)=>Math.round((b[Math.floor(i*k)]-lo)/((hi-lo)||1)*100));
+  }
+  Store.add({t:Date.now(),bpm:ses.bpm,spo2:ses.spo2??null,w});
+  ses=null;renderHistory();
+}
+function spark(w){
+  if(!w.length)return'';
+  const p=w.map((v,i)=>(i/(w.length-1)*100).toFixed(1)+','+(28-v*.26).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,30 ${p} 100,30" fill="rgba(129,140,248,.25)"/><polyline points="${p}" fill="none" stroke="#22c55e" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+let sel=new Date();
+const dayKey=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+function renderHistory(){
+  $('#cT').textContent=t('time');$('#cG').textContent=t('graph');
+  $('#hMonth').textContent=cap(sel.toLocaleDateString(lang,{month:'long',year:'numeric'}));
+  const mon=new Date(sel);mon.setDate(sel.getDate()-((sel.getDay()+6)%7));
+  $('#week').innerHTML=[...Array(7)].map((_,i)=>{
+    const d=new Date(mon);d.setDate(mon.getDate()+i);
+    return `<button class="day${dayKey(d)===dayKey(sel)?' on':''}" type="button" data-d="${d.getTime()}"><span>${cap(d.toLocaleDateString(lang,{weekday:'short'}).replace('.',''))}</span><b>${d.getDate()}</b></button>`;
+  }).join('');
+  const rows=Store.load().filter(r=>dayKey(new Date(r.t))===dayKey(sel));
+  $('#rows').innerHTML=rows.length?rows.map(r=>`<div class="row"><span>${new Date(r.t).toLocaleTimeString(lang,{hour:'2-digit',minute:'2-digit'})}</span><span>${r.spo2!=null?Math.round(r.spo2)+'%':'--'}</span><span>${r.bpm}</span><span class="sp">${spark(r.w||[])}</span></div>`).join(''):`<p class="empty">${t('empty')}</p>`;
+}
+$('#week').addEventListener('click',e=>{const b=e.target.closest('.day');if(b){sel=new Date(+b.dataset.d);renderHistory()}});
+$('#prev').onclick=()=>{sel.setDate(sel.getDate()-7);renderHistory()};
+$('#next').onclick=()=>{sel.setDate(sel.getDate()+7);renderHistory()};
+$('#pick').addEventListener('change',e=>{if(e.target.value){sel=new Date(e.target.value+'T12:00');renderHistory()}});
+function route(){ // dos páginas en un solo archivo: #historial muestra el historial
+  const h=location.hash==='#historial';
+  $('#home').hidden=h;$('#hist').hidden=!h;
+  if(h){sel=new Date();renderHistory()}
+  scrollTo(0,0);
+}
+addEventListener('hashchange',route);route();
+$('#toHist').onclick=()=>{location.hash='#historial'};
+$('#back').onclick=()=>{history.length>1?history.back():(location.hash='')};
 
 window.PulseOx={BLE,update,reset,pushSample:v=>Wave.pushSample(v)}; // Enlace para integraciones futuras y pruebas desde consola
 </script>
