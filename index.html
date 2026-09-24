@@ -1,197 +1,29 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pulsoximetría Mark II</title>
-    <style>
-        :root {
-            --bg-color: #05051a;
-            --cyan: #00e5ff;
-            --card-bg: #1a1a2e;
-            --text-white: #ffffff;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-white);
-            font-family: system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .header {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .header h1 { font-size: 1.2rem; margin: 0; }
-        .lang-select {
-            background: #222; color: white; border: none; 
-            padding: 5px 10px; border-radius: 5px;
-        }
-        .btn-cyan {
-            background-color: var(--cyan);
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            width: fit-content;
-            align-self: flex-start;
-            margin-bottom: 30px;
-        }
-        .btn-cyan:active { transform: scale(0.95); }
-        .main-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
-        
-        /* Círculo SpO2 */
-        .spo2-circle {
-            width: 150px; height: 150px;
-            border-radius: 50%;
-            border: 10px solid var(--cyan);
-            border-top-color: white; /* Simular progreso */
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; font-weight: bold;
-            margin-bottom: 30px;
-            transform: rotate(45deg);
-        }
-        .spo2-circle span { transform: rotate(-45deg); }
-
-        /* Tarjeta BPM */
-        .bpm-card {
-            background-color: var(--card-bg);
-            width: 100%; padding: 20px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            gap: 15px; margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        .heart-icon { color: red; font-size: 2rem; }
-        .bpm-value { font-size: 1.5rem; font-weight: bold; }
-
-        .btn-center { align-self: center; margin-bottom: 30px; }
-        
-        /* Gráfica */
-        .chart-section { width: 100%; text-align: left; }
-        .chart-section h3 { font-size: 1rem; margin-bottom: 10px; }
-        canvas {
-            width: 100%; height: 120px;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="main-container">
-        <div class="header">
-            <h1>Revisa tu pulsoximetría</h1>
-            <select class="lang-select"><option>Español ˅</option></select>
-        </div>
-
-        <button class="btn-cyan" id="btnConnect">Conectar</button>
-
-        <div class="spo2-circle">
-            <span id="spo2Value">90 % SpO2</span>
-        </div>
-
-        <div class="bpm-card">
-            <div class="heart-icon">❤️</div>
-            <div class="bpm-value"><span id="bpmValue">0</span> Bpm</div>
-        </div>
-
-        <button class="btn-cyan btn-center">Ver registro</button>
-
-        <div class="chart-section">
-            <h3>Curva pletismográfica de la señal</h3>
-            <canvas id="plethCanvas" width="400" height="120"></canvas>
-        </div>
-    </div>
-
-    <script>
-        const btnConnect = document.getElementById('btnConnect');
-        const bpmDisplay = document.getElementById('bpmValue');
-        const canvas = document.getElementById('plethCanvas');
-        const ctx = canvas.getContext('2d');
-
-        // UUIDs definidos en el código C++ de la ESP32-S3
-        const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-        const CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-
-        // Variables para la gráfica
-        let xPos = 0;
-        let lastY = canvas.height / 2;
-
-        btnConnect.addEventListener('click', async () => {
-            try {
-                btnConnect.innerText = "Buscando traje...";
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'MarkII_PPG' }],
-                    optionalServices: [SERVICE_UUID]
-                });
-
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                const characteristic = await service.getCharacteristic(CHAR_UUID);
-
-                await characteristic.startNotifications();
-                btnConnect.innerText = "Conectado";
-                btnConnect.style.backgroundColor = "#00FF00"; // Cambia a verde
-
-                characteristic.addEventListener('characteristicvaluechanged', handleData);
-            } catch (error) {
-                console.error("Fallo de conexión:", error);
-                btnConnect.innerText = "Error (Reintentar)";
-            }
-        });
-
-        function handleData(event) {
+function handleData(event) {
             const value = new TextDecoder().decode(event.target.value);
-            // El formato que envía la ESP32 es: "BPM,IR\n"
+            // El nuevo formato que enviaremos desde la ESP32 será: "BPM,IR,SpO2\n"
             const dataParts = value.split(',');
             
-            if (dataParts.length >= 2) {
+            if (dataParts.length >= 3) {
                 const bpm = parseInt(dataParts[0]);
                 const irValue = parseInt(dataParts[1]);
+                const spo2 = parseInt(dataParts[2]);
 
-                // Actualizar texto en pantalla
+                // Actualizar BPM
                 if(bpm > 0) bpmDisplay.innerText = bpm;
+                
+                // Actualizar SpO2 en el anillo cyan
+                if(spo2 > 0) {
+                    document.getElementById('spo2Value').innerText = spo2 + " % SpO2";
+                }
 
                 // Dibujar gráfica tipo osciloscopio
                 drawGraph(irValue);
+            } 
+            // Modo de compatibilidad si la ESP32 sigue con el código viejo
+            else if (dataParts.length === 2) {
+                const bpm = parseInt(dataParts[0]);
+                const irValue = parseInt(dataParts[1]);
+                if(bpm > 0) bpmDisplay.innerText = bpm;
+                drawGraph(irValue);
             }
         }
-
-        function drawGraph(irValue) {
-            // Mapear el valor IR para que encaje en el canvas (ajustar según el ruido del sensor)
-            // Se asume un delta simulado para el efecto visual, ya que el IR crudo es muy alto
-            let mappedY = mapValue(irValue % 1000, 0, 1000, canvas.height, 0); 
-            
-            ctx.beginPath();
-            ctx.moveTo(xPos - 2, lastY);
-            ctx.lineTo(xPos, mappedY);
-            ctx.strokeStyle = '#00e5ff'; // Cyan neón
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            lastY = mappedY;
-            xPos += 2;
-
-            // Borrar pantalla al llegar al borde derecho
-            if (xPos >= canvas.width) {
-                xPos = 0;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-
-        // Función auxiliar para mapear rangos
-        function mapValue(x, in_min, in_max, out_min, out_max) {
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-        }
-    </script>
-</body>
-</html>
