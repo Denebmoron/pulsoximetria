@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pulsioxímetro</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+/* Diseño oscuro fijo según la especificación: los tokens son iguales en modo claro y oscuro */
+:root{--bg:#030712;--card:#1f2937;--cyan:#06b6d4;--cyan-hi:#22d3ee;--cyan-lo:#0e7490;--track:rgba(165,243,252,.14);--text:#fff;--heart:#ef4444;
+  color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.app{min-height:100%;max-width:480px;margin:0 auto;padding:20px 20px 24px;display:flex;flex-direction:column;gap:20px}
+
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.header h1{margin:0;font-size:clamp(1.15rem,5vw,1.5rem);font-weight:700;line-height:1.2}
+.lang{position:relative;flex:none}
+.lang select{appearance:none;-webkit-appearance:none;background:var(--card);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 34px 9px 12px;font:inherit;font-size:.9rem;font-weight:500;cursor:pointer}
+.lang svg{position:absolute;right:10px;top:50%;translate:0 -50%;width:16px;height:16px;pointer-events:none;color:var(--text)}
+
+.connect{width:100%;border:0;border-radius:14px;background:var(--cyan);color:#fff;font:inherit;font-weight:700;font-size:1.05rem;padding:16px;cursor:pointer;transition:filter .2s,transform .1s}
+.connect:hover{filter:brightness(1.08)}
+.connect:active{transform:scale(.98)}
+.connect:disabled{opacity:.7;cursor:progress}
+.connect:focus-visible,.lang select:focus-visible{outline:2px solid var(--cyan-hi);outline-offset:3px}
+
+.gauge-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 0}
+.gauge{position:relative;width:min(100%,340px);aspect-ratio:1}
+.gauge svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 12px rgba(6,182,212,.35))}
+.gauge .track{stroke:var(--track)}
+.gauge .arc{stroke:url(#g);transition:stroke-dasharray .8s ease}
+.reading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.reading div{display:flex;align-items:baseline;gap:.5rem}
+.reading .n{font-size:clamp(3rem,16vw,4.5rem);font-weight:800;line-height:1}
+.reading .u{font-size:clamp(1.1rem,5vw,1.5rem);font-weight:600}
+
+.bpm{display:flex;align-items:center;justify-content:center;gap:16px;background:var(--card);border-radius:18px;padding:18px 20px}
+.bpm svg{width:40px;height:40px;fill:var(--heart);flex:none}
+.bpm .n{font-size:clamp(2rem,10vw,2.75rem);font-weight:800;line-height:1}
+.bpm .u{font-size:1.15rem;font-weight:600}
+.bpm div{display:flex;align-items:baseline;gap:.5rem}
+.wave{display:flex;background:#0b1019;border:1px solid rgba(255,255,255,.05);border-radius:18px;padding:14px 16px;height:clamp(110px,20vh,150px)}
+.wave canvas{flex:1;min-width:0;width:100%;height:100%;display:block}
+.live{animation:beat var(--beat,1s) ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.live{animation:none}.gauge .arc{transition:none}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="header">
+    <h1 id="title">Revisa tu pulsoximetría</h1>
+    <label class="lang">
+      <select id="lang" aria-label="Idioma">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+      </select>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </label>
+  </header>
+
+  <button class="connect" id="connect" type="button">Conectar</button>
+
+  <section class="gauge-wrap" aria-label="SpO2">
+    <div class="gauge">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <linearGradient id="g" x1="1" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#0e7490"/>
+            <stop offset="1" stop-color="#22d3ee"/>
+          </linearGradient>
+        </defs>
+        <circle class="track" cx="100" cy="100" r="84" fill="none" stroke-width="16"/>
+        <circle id="arc" class="arc" cx="100" cy="100" r="84" fill="none" stroke-width="16" stroke-linecap="round" pathLength="100" stroke-dasharray="60 40" transform="rotate(-90 100 100)"/>
+      </svg>
+      <div class="reading" aria-live="polite"><div><span class="n" id="spo2">[1]</span><span class="u">SpO2</span></div></div>
+    </div>
+  </section>
+
+  <section class="bpm" aria-label="Bpm">
+    <svg id="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    <div><span class="n" id="bpm">[1]</span><span class="u">Bpm</span></div>
+  </section>
+
+  <section class="wave"><canvas id="wave" role="img" aria-label="Pletismografía"></canvas></section>
+</main>
+
+<script>
+/* ---------- Textos (i18n mínimo) ---------- */
+const I18N={
+  es:{title:'Revisa tu pulsoximetría',connect:'Conectar',connecting:'Conectando…',disconnect:'Desconectar',nosupport:'Bluetooth no disponible',failed:'No se pudo conectar'},
+  en:{title:'Check your pulse oximetry',connect:'Connect',connecting:'Connecting…',disconnect:'Disconnect',nosupport:'Bluetooth unavailable',failed:'Could not connect'}
+};
+
+/* ---------- Capa BLE (invisible): perfiles estándar Bluetooth SIG ----------
+   Pulse Oximeter Service 0x1822 → PLX Continuous Measurement 0x2A5F (SpO2 + pulso)
+   Heart Rate Service 0x180D → Heart Rate Measurement 0x2A37 (respaldo para Bpm)
+   Si tu dispositivo usa un servicio propietario, cambia UUID y parsers aquí. */
+const BLE={
+  UUID:{plx:0x1822,plxCont:0x2A5F,hr:0x180D,hrm:0x2A37},
+  device:null,
+  get supported(){return !!navigator.bluetooth},
+  sfloat(dv,o){ // IEEE-11073 SFLOAT de 16 bits
+    const v=dv.getUint16(o,true);
+    if(v>=0x07FE&&v<=0x0802)return NaN;
+    let m=v&0x0FFF,e=v>>12;
+    if(m>=0x0800)m-=0x1000;
+    if(e>=0x8)e-=0x10;
+    return m*Math.pow(10,e);
+  },
+  parsePLX(dv){return{spo2:this.sfloat(dv,1),bpm:this.sfloat(dv,3)}},
+  parseHRM(dv){return{bpm:(dv.getUint8(0)&1)?dv.getUint16(1,true):dv.getUint8(1)}},
+  async connect(onData,onLost){
+    if(!this.supported)throw new Error('unsupported');
+    const U=this.UUID;
+    this.device=await navigator.bluetooth.requestDevice({filters:[{services:[U.plx]},{services:[U.hr]}],optionalServices:[U.plx,U.hr]});
+    this.device.addEventListener('gattserverdisconnected',onLost);
+    const gatt=await this.device.gatt.connect();
+    const sub=async(svc,chr,parse)=>{
+      const c=await(await gatt.getPrimaryService(svc)).getCharacteristic(chr);
+      c.addEventListener('characteristicvaluechanged',e=>onData(parse(e.target.value)));
+      await c.startNotifications();
+    };
+    try{await sub(U.plx,U.plxCont,d=>this.parsePLX(d))}
+    catch{await sub(U.hr,U.hrm,d=>this.parseHRM(d))}
+  },
+  disconnect(){if(this.device&&this.device.gatt.connected)this.device.gatt.disconnect()}
+};
+
+/* ---------- Estado y UI ---------- */
+const $=s=>document.querySelector(s);
+const ui={spo2:$('#spo2'),bpm:$('#bpm'),arc:$('#arc'),btn:$('#connect'),title:$('#title'),heart:$('#heart')};
+let lang='es',state='idle',flash=null;
+const t=k=>I18N[lang][k];
+
+function renderBtn(){
+  ui.btn.textContent=flash||({idle:t('connect'),busy:t('connecting'),on:t('disconnect')})[state];
+  ui.btn.disabled=state==='busy';
+}
+function setState(s){state=s;renderBtn()}
+function showFlash(k){flash=t(k);renderBtn();setTimeout(()=>{flash=null;renderBtn()},2500)}
+
+function update({spo2,bpm}={}){ // Punto de entrada único para datos: PulseOx.update({spo2:97,bpm:72})
+  if(Number.isFinite(spo2)){
+    const p=Math.min(100,Math.max(0,spo2));
+    ui.spo2.textContent=Math.round(spo2);
+    ui.arc.setAttribute('stroke-dasharray',p+' '+(100-p));
+  }
+  if(Number.isFinite(bpm)&&bpm>0){
+    ui.bpm.textContent=Math.round(bpm);
+    ui.heart.style.setProperty('--beat',(60/bpm)+'s');
+    Wave.bpm=bpm;
+    ui.heart.classList.add('live');
+  }
+}
+function reset(){
+  ui.spo2.textContent='[1]';ui.bpm.textContent='[1]';
+  ui.arc.setAttribute('stroke-dasharray','60 40');
+  ui.heart.classList.remove('live');
+  Wave.live=false;Wave.bpm=72;
+}
+
+ui.btn.addEventListener('click',async()=>{
+  if(state==='on'){BLE.disconnect();return}
+  setState('busy');
+  try{
+    await BLE.connect(update,()=>{setState('idle');reset()});
+    setState('on');
+  }catch(err){
+    setState('idle');
+    if(err.message==='unsupported'||err.name==='SecurityError')showFlash('nosupport');
+    else if(err.name!=='NotFoundError')showFlash('failed'); // NotFoundError = el usuario canceló el selector
+  }
+});
+
+$('#lang').addEventListener('change',e=>{
+  lang=e.target.value;document.documentElement.lang=lang;
+  ui.title.textContent=t('title');renderBtn();
+});
+
+/* ---------- Onda pletismográfica (marcador de posición) ----------
+   Gráfico de línea sin ejes ni leyenda. Simula un pulso constante; al llamar
+   PulseOx.pushSample(valor) con señal real, la simulación se detiene. */
+const Wave={
+  cv:$('#wave'),bpm:72,live:false,buf:[],N:240,phase:0,last:0,dpr:1,
+  shape(p){return Math.exp(-(((p-.18)/.08)**2))+.35*Math.exp(-(((p-.45)/.1)**2))}, // pico sistólico + muesca dicrota
+  tick(){this.phase=(this.phase+this.bpm/3600)%1;return this.shape(this.phase)}, // 60 muestras/s
+  push(v){this.buf.push(v);if(this.buf.length>this.N)this.buf.shift()},
+  fit(){const r=this.cv.getBoundingClientRect();this.dpr=window.devicePixelRatio||1;this.cv.width=r.width*this.dpr;this.cv.height=r.height*this.dpr;this.draw()},
+  draw(){
+    const c=this.cv,x=c.getContext('2d'),w=c.width,h=c.height,b=this.buf;
+    x.clearRect(0,0,w,h);if(b.length<2)return;
+    const lo=Math.min(...b),hi=Math.max(...b),pad=h*.14,rng=(hi-lo)||1;
+    x.beginPath();
+    b.forEach((v,i)=>{const px=i/(this.N-1)*w,py=h-pad-(v-lo)/rng*(h-2*pad);i?x.lineTo(px,py):x.moveTo(px,py)});
+    x.lineWidth=2.5*this.dpr;x.lineJoin=x.lineCap='round';x.strokeStyle='#22c55e';
+    x.shadowColor='rgba(34,197,94,.55)';x.shadowBlur=8*this.dpr;x.stroke();
+  },
+  loop(ts){
+    if(!this.live){
+      const n=Math.min(10,Math.floor((ts-this.last)*.06));
+      if(n>0){for(let i=0;i<n;i++)this.push(this.tick());this.last+=n/.06;this.draw()}
+    }
+    requestAnimationFrame(e=>this.loop(e));
+  },
+  init(){
+    for(let i=0;i<this.N;i++)this.push(this.tick());
+    new ResizeObserver(()=>this.fit()).observe(this.cv);
+    if(!matchMedia('(prefers-reduced-motion:reduce)').matches)requestAnimationFrame(e=>{this.last=e;this.loop(e)});
+  },
+  pushSample(v){this.live=true;this.push(v);this.draw()}
+};
+Wave.init();
+
+window.PulseOx={BLE,update,reset,pushSample:v=>Wave.pushSample(v)}; // Enlace para integraciones futuras y pruebas desde consola
+</script>
+</body>
+</html>
