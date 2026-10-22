@@ -1,0 +1,108 @@
+/* ===== Variables y base ===== */
+:root {
+    --bg-color: #05051a;
+    --cyan: #00e5ff;
+    --card-bg: #1a1a2e;
+    --text-white: #ffffff;
+}
+body {
+    background-color: var(--bg-color);
+    color: var(--text-white);
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.main-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
+
+/* ===== Cabecera e idioma ===== */
+.header {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.header h1 { font-size: 1.2rem; margin: 0; }
+.lang-select {
+    background: #222; color: white; border: none;
+    padding: 5px 10px; border-radius: 5px;
+}
+
+/* ===== Botones ===== */
+.btn-cyan {
+    background-color: var(--cyan);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    width: fit-content;
+    align-self: flex-start;
+    margin-bottom: 30px;
+}
+.btn-cyan:active { transform: scale(0.95); }
+.btn-cyan:disabled { opacity: .5; cursor: not-allowed; }
+.btn-center { align-self: center; margin-bottom: 30px; }
+
+/* ===== Círculo SpO2: anillo que refleja el valor ===== */
+.spo2-circle {
+    --pct: 0; /* 0-100, lo actualiza JS cuando llega una lectura real */
+    --ring-color: var(--cyan); /* el semáforo cambia esto según el nivel de SpO2 */
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255,255,255,.12) 0);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 30px;
+    transition: background .6s ease;
+}
+/* Semáforo: verde >=95%, amarillo 90-94%, rojo <90% (umbrales ajustables en js/alerts.js) */
+.spo2-circle.level-green  { --ring-color: #00e676; }
+.spo2-circle.level-yellow { --ring-color: #ffea00; }
+.spo2-circle.level-red    { --ring-color: #ff1744; }
+.spo2-circle-inner {
+    width: 128px; height: 128px;
+    border-radius: 50%;
+    background: var(--bg-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: bold;
+    text-align: center;
+}
+
+/* ===== Tarjeta BPM ===== */
+.bpm-card {
+    background-color: var(--card-bg);
+    width: 100%; padding: 20px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 15px; margin-bottom: 20px;
+    box-sizing: border-box;
+}
+.heart-icon { color: red; font-size: 2rem; }
+.bpm-value { font-size: 1.5rem; font-weight: bold; }
+
+/* ===== Gráfica ===== */
+.chart-section { width: 100%; text-align: left; }
+.chart-section h3 { font-size: 1rem; margin-bottom: 10px; }
+canvas {
+    width: 100%; height: 120px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+}
+
+/* ===== Disparador del modo demo: un puntito casi invisible ===== */
+.demo-trigger {
+    position: fixed;
+    bottom: 14px; right: 14px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    border: none; padding: 0; cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+}
+.demo-trigger:hover { background: rgba(0,229,255,.35); transform: scale(1.4); }
+.demo-trigger.active { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
