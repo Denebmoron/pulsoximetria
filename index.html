@@ -30,12 +30,41 @@
             <div class="bpm-value"><span id="bpmValue">0</span> Bpm</div>
         </div>
 
-        <button class="btn-cyan btn-center" id="btnHistory">Ver registro</button>
+        <div class="btn-row">
+            <button class="btn-cyan" id="btnSave">Guardar</button>
+            <button class="btn-cyan" id="btnHistory">Ver registro</button>
+        </div>
 
         <div class="chart-section">
             <h3 id="chartTitle">Curva pletismográfica de la señal</h3>
             <canvas id="plethCanvas" width="400" height="120"></canvas>
         </div>
+    </div>
+
+    <!-- Panel de registro (se abre con "Ver registro") -->
+    <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
+        <div class="history-inner">
+            <div class="history-header">
+                <h2 id="historyTitle">Registro</h2>
+                <button class="icon-btn" id="btnCloseHistory" aria-label="Cerrar">✕</button>
+            </div>
+            <ul class="history-list" id="historyList"></ul>
+            <p class="history-empty" id="historyEmpty">Aún no hay lecturas guardadas.</p>
+            <div class="history-actions">
+                <button class="btn-ghost" id="btnExport">Exportar CSV</button>
+                <button class="btn-ghost btn-danger" id="btnClear">Borrar todo</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Aviso breve en pantalla (confirmaciones) -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Escenarios del demo: tres puntitos que solo aparecen mientras el demo está activo -->
+    <div class="demo-scenarios" id="demoScenarios" hidden>
+        <button class="scen scen-red" data-scenario="critical" title="Crítico" aria-label="Crítico"></button>
+        <button class="scen scen-yellow" data-scenario="caution" title="Precaución" aria-label="Precaución"></button>
+        <button class="scen scen-green active" data-scenario="normal" title="Normal" aria-label="Normal"></button>
     </div>
 
     <!-- Disparador del modo demo: un punto discreto, no un botón visible -->
@@ -45,6 +74,7 @@
     <script src="js/i18n.js"></script>
     <script src="js/graph.js"></script>
     <script src="js/alerts.js"></script>
+    <script src="js/records.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/ble.js"></script>
     <script src="js/demo.js"></script>
