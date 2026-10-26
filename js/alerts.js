@@ -15,10 +15,29 @@ const Alerts = {
     lastLevel: null,
     lastWhatsappAt: 0,
 
+    // Nueva sesión: la próxima lectura baja vuelve a avisar
+    reset() {
+        this.lastLevel = null;
+    },
+
+    // El nivel se calcula con el valor redondeado, el mismo que se ve en pantalla
+    // (así "90 %" nunca aparece en rojo).
     levelFor(spo2) {
-        if (spo2 < this.THRESH.low) return 'red';
-        if (spo2 < this.THRESH.caution) return 'yellow';
+        const value = Math.round(spo2);
+        if (value < this.THRESH.low) return 'red';
+        if (value < this.THRESH.caution) return 'yellow';
         return 'green';
+    },
+
+    // Registra el service worker (sw.js), necesario para las notificaciones en Android.
+    // Solo funciona con HTTPS (p. ej. GitHub Pages) o localhost; abierto como archivo suelto no.
+    async registerWorker() {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            await navigator.serviceWorker.register('sw.js');
+        } catch (e) {
+            console.warn('No se pudo registrar el service worker (¿la página usa HTTPS?):', e);
+        }
     },
 
     // Pide permiso de notificaciones. Hay que llamarla desde un clic del usuario
@@ -29,16 +48,30 @@ const Alerts = {
         return Notification.permission;
     },
 
-    // Notificación nativa: en Android aparece en la barra del sistema aunque
-    // cambies de pestaña, mientras Chrome siga abierto. En iPhone no aparece
-    // a menos que la app esté instalada como PWA (limitación de Apple, no nuestra).
-    notifyPhone(spo2) {
+    // Notificación del sistema (barra del teléfono). En Android/Chrome solo se puede mostrar
+    // a través del service worker; "new Notification()" queda como respaldo para escritorio.
+    // En iPhone no aparece a menos que la app esté instalada como PWA (limitación de Apple).
+    async notifyPhone(spo2) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        new Notification('⚠️ SpO2 bajo', {
+
+        const title = '⚠️ SpO2 bajo';
+        const options = {
             body: `SpO2 en ${Math.round(spo2)}%. Revisa al paciente.`,
             tag: 'spo2-alert', // evita apilar notificaciones repetidas, la última reemplaza a la anterior
-            renotify: true
-        });
+            renotify: true,
+            vibrate: [200, 100, 200]
+        };
+
+        try {
+            if ('serviceWorker' in navigator && await navigator.serviceWorker.getRegistration()) {
+                const reg = await navigator.serviceWorker.ready; // espera a que el worker esté activo
+                await reg.showNotification(title, options);
+                return;
+            }
+            new Notification(title, options);
+        } catch (e) {
+            console.error('No se pudo mostrar la notificación:', e);
+        }
     },
 
     // Le pide al backend (server/server.js) que mande el WhatsApp al familiar.
