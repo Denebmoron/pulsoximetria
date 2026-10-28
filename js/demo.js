@@ -1,6 +1,6 @@
 // ===== Modo demo: simula lecturas para probar la app sin el oxímetro conectado =====
-// Tiene tres escenarios (normal, precaución, crítico) para probar el semáforo,
-// las notificaciones y el guardado de lecturas.
+// Tiene múltiples escenarios basados en la escala clínica para probar el semáforo,
+// las notificaciones del sistema y el guardado de lecturas.
 
 const Demo = {
     on: false,
@@ -11,11 +11,13 @@ const Demo = {
     noise: 0,
     scenario: 'normal',
 
-    // Valores hacia los que se mueve la lectura en cada escenario
+    // Escenarios ampliados según los rangos clínicos (Normal, Leve, Moderada, Severa)
     SCENARIOS: {
-        normal:   { spo2: 97, bpm: 75 },
-        caution:  { spo2: 92, bpm: 88 },
-        critical: { spo2: 86, bpm: 105 }
+        normal:    { spo2: 97, bpm: 75 },  // Verde (95-99%)
+        caution:   { spo2: 93, bpm: 82 },  // Amarillo - Hipoxia leve (91-94%)[cite: 1]
+        borderline:{ spo2: 90, bpm: 88 },  // Rojo / Límite - Hipoxia moderada (86-90%)[cite: 1]
+        critical:  { spo2: 87, bpm: 96 },  // Rojo - Hipoxia moderada baja (86-90%)[cite: 1]
+        severe:    { spo2: 83, bpm: 110 }  // Rojo crítico - Hipoxia severa (<86%)[cite: 1]
     },
 
     // Pico sistólico + muesca dicrota: forma típica de una onda de pulso real
