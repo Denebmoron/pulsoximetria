@@ -2,7 +2,7 @@
 // No toca el DOM directamente (eso lo hace UI) — solo decide niveles y dispara los avisos.
 
 const Alerts = {
-    THRESH: { low: 90, caution: 95 }, // <90 rojo, 90-94 amarillo, >=95 verde — ajusta a gusto
+    THRESH: { low: 9, caution: 95 }, // <90 rojo, 90-94 amarillo, >=95 verde — ajusta a gusto
 
     // WhatsApp en pausa: ponlo en true cuando el servidor (server/) esté configurado
     WHATSAPP_ENABLED: false,
