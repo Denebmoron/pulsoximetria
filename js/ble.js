@@ -1,4 +1,4 @@
-// ===== Bluetooth (Web Bluetooth): conexión con la ESP32 y lectura de datos =====
+/ ===== Bluetooth (Web Bluetooth): conexión con la ESP32 y lectura de datos =====
 
 const BLE = {
     DEVICE_NAME: 'MarkII_PPG',
@@ -22,6 +22,7 @@ const BLE = {
 
             await characteristic.startNotifications();
             UI.setConnState('connected');
+            App.resetReading(); // sesión nueva: no arrastrar valores de un demo o de una conexión anterior
 
             characteristic.addEventListener('characteristicvaluechanged', e => this.handleData(e));
         } catch (error) {
@@ -48,4 +49,3 @@ const BLE = {
         const reading = this.parse(text);
         if (reading) App.applyReading(reading.bpm, reading.ir, reading.spo2);
     }
-};
