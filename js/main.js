@@ -44,6 +44,21 @@ const App = {
         UI.toast(Lang.t(rec ? 'saved' : 'saveError'));
     },
 
+    // Botón "Activar notificaciones" del aviso: pedir el permiso desde un toque del usuario
+    async enableNotifications() {
+        const permission = await Alerts.requestPermission();
+        if (permission === 'granted') {
+            UI.toast(Lang.t('notifEnabled'));
+            // El aviso sigue activo: muestra ya la notificación que antes no pudo salir
+            if (UI.alertState && Number.isFinite(this.last.spo2)) {
+                UI.setAlertPhoneStatus(await Alerts.notifyPhone(this.last.spo2));
+            }
+        } else if (UI.alertState) {
+            const status = permission === 'denied' ? 'denied' : permission === 'unsupported' ? 'unsupported' : 'default';
+            UI.setAlertPhoneStatus({ status });
+        }
+    },
+
     deleteRecord(id) {
         Records.remove(id);
         UI.renderHistory();
@@ -59,8 +74,13 @@ const App = {
     },
 
     init() {
-        Records.load();
-        Alerts.registerWorker();
+        // Módulos secundarios: si alguno falta o falla, el resto de la app sigue funcionando
+        try {
+            Records.load();
+            Alerts.registerWorker();
+        } catch (e) {
+            console.error('Módulo secundario no disponible:', e);
+        }
         UI.init();
         Graph.init(UI.el.canvas);
 
@@ -71,6 +91,9 @@ const App = {
             const b = e.target.closest('[data-scenario]');
             if (b) Demo.setScenario(b.dataset.scenario);
         });
+
+        UI.el.btnCloseAlert.addEventListener('click', () => UI.hideAlert());
+        UI.el.btnEnableNotif.addEventListener('click', () => this.enableNotifications());
 
         UI.el.btnSave.addEventListener('click', () => this.saveReading());
         UI.el.btnHistory.addEventListener('click', () => UI.openHistory());
