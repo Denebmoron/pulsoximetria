@@ -1,6 +1,6 @@
 // ===== Idioma: textos traducidos y estado del idioma actual =====
 
-const I18N = {
+const i18n = {
     es: {
         title: 'Revisa tu pulsoximetría',
         connect: 'Conectar',
