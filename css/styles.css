@@ -178,3 +178,27 @@ canvas {
 .scen-green  { background: #00e676; color: #00e676; }
 .scen-yellow { background: #ffea00; color: #ffea00; }
 .scen-red    { background: #ff1744; color: #ff1744; }
+
+/* ===== Aviso de alerta en pantalla (SpO2 en rojo) ===== */
+.alert-banner {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 20px); max-width: 400px; box-sizing: border-box;
+    z-index: 25;
+    background: #5c0014; color: #fff;
+    border: 2px solid #ff1744; border-radius: 12px;
+    padding: 10px 12px;
+    animation: alert-pulse 1.4s ease-in-out infinite;
+}
+.alert-main { display: flex; align-items: center; gap: 8px; }
+.alert-main span { flex: 1; font-size: .9rem; }
+.alert-main strong { white-space: nowrap; }
+.alert-hint {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.25);
+    font-size: .8rem; line-height: 1.35;
+}
+.alert-hint .btn-ghost { margin-top: 8px; padding: 8px 12px; }
+@keyframes alert-pulse {
+    0%, 100% { box-shadow: 0 4px 18px rgba(255,23,68,.35); }
+    50%      { box-shadow: 0 4px 26px rgba(255,23,68,.85); }
+}
