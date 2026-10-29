@@ -4,9 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulsoximetría Mark II</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
+
+    <!-- Diagnóstico: si algo falla al cargar o ejecutarse, lo muestra aquí (sirve en el celular, sin consola).
+         Toca el aviso para cerrarlo. -->
+    <div id="diag" hidden style="position:fixed;top:0;left:0;right:0;z-index:30;background:#b00020;color:#fff;font:13px/1.35 system-ui,sans-serif;padding:6px 12px;cursor:pointer"></div>
+    <script>
+    (function () {
+        var box = document.getElementById('diag');
+        var shown = {};
+        function show(msg) {
+            if (shown[msg]) return;
+            shown[msg] = true;
+            var p = document.createElement('p');
+            p.style.margin = '4px 0';
+            p.textContent = msg;
+            box.appendChild(p);
+            box.hidden = false;
+        }
+        // En fase de captura para detectar también archivos que no se pudieron descargar (404)
+        window.addEventListener('error', function (e) {
+            var t = e.target;
+            if (t && t.tagName === 'SCRIPT' && t.getAttribute('src')) {
+                show('No se pudo cargar ' + t.getAttribute('src').split('?')[0] + ' (revisa que esté subido en esa ruta del repositorio)');
+            } else if (e.message) {
+                var file = (e.filename || '').split('/').pop().split('?')[0];
+                show('Error: ' + e.message + (file ? ' (' + file + ':' + e.lineno + ')' : ''));
+            }
+        }, true);
+        box.addEventListener('click', function () { box.hidden = true; });
+    })();
+    </script>
 
     <div class="main-container">
         <div class="header">
@@ -57,6 +87,19 @@
         </div>
     </section>
 
+    <!-- Aviso de alerta en pantalla: sale siempre que el SpO2 entra en rojo -->
+    <div class="alert-banner" id="alertBanner" role="alert" hidden>
+        <div class="alert-main">
+            <strong id="alertTitle"></strong>
+            <span id="alertText"></span>
+            <button class="icon-btn" id="btnCloseAlert" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="alert-hint" id="alertHint" hidden>
+            <span id="alertHintText"></span>
+            <button class="btn-ghost" id="btnEnableNotif" hidden>Activar notificaciones</button>
+        </div>
+    </div>
+
     <!-- Aviso breve en pantalla (confirmaciones) -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -71,13 +114,13 @@
     <button class="demo-trigger" id="btnDemo" title="Demo" aria-label="Demo"></button>
 
     <!-- El orden importa: cada archivo usa a los que están antes que él -->
-    <script src="js/i18n.js"></script>
-    <script src="js/graph.js"></script>
-    <script src="js/alerts.js"></script>
-    <script src="js/records.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/ble.js"></script>
-    <script src="js/demo.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/i18n.js?v=6"></script>
+    <script src="js/graph.js?v=6"></script>
+    <script src="js/alerts.js?v=6"></script>
+    <script src="js/records.js?v=6"></script>
+    <script src="js/ui.js?v=6"></script>
+    <script src="js/ble.js?v=6"></script>
+    <script src="js/demo.js?v=6"></script>
+    <script src="js/main.js?v=6"></script>
 </body>
 </html>
