@@ -5,6 +5,7 @@ const UI = {
     connState: 'idle', // idle | connecting | connected | error
     demoOn: false,
     toastTimer: null,
+    alertState: null, // { spo2, status, detail } mientras el aviso de alerta está visible
 
     // Guarda las referencias a los elementos de la página
     init() {
@@ -29,7 +30,14 @@ const UI = {
             btnCloseHistory: $('btnCloseHistory'),
             btnExport: $('btnExport'),
             btnClear: $('btnClear'),
-            toast: $('toast')
+            toast: $('toast'),
+            alertBanner: $('alertBanner'),
+            alertTitle: $('alertTitle'),
+            alertText: $('alertText'),
+            alertHint: $('alertHint'),
+            alertHintText: $('alertHintText'),
+            btnCloseAlert: $('btnCloseAlert'),
+            btnEnableNotif: $('btnEnableNotif')
         };
     },
 
@@ -56,6 +64,7 @@ const UI = {
         this.el.spo2.textContent = '-- % SpO2';
         this.el.spo2Circle.style.setProperty('--pct', 0);
         this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-red');
+        this.hideAlert();
     },
 
     // ---------- Botones de conexión y demo ----------
@@ -102,6 +111,44 @@ const UI = {
         t.classList.add('show');
         clearTimeout(this.toastTimer);
         this.toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+    },
+
+    // ---------- Aviso de alerta (SpO2 en rojo) ----------
+
+    // Muestra el aviso en pantalla. El estado de la notificación del teléfono llega después.
+    showAlert(spo2) {
+        this.alertState = { spo2: Math.round(spo2), status: null, detail: '' };
+        this.renderAlert();
+        this.el.alertBanner.hidden = false;
+    },
+
+    // Si la notificación del teléfono no pudo salir, explica por qué dentro del aviso
+    setAlertPhoneStatus(result) {
+        if (!this.alertState) return;
+        this.alertState.status = result.status;
+        this.alertState.detail = result.detail || '';
+        this.renderAlert();
+    },
+
+    hideAlert() {
+        this.alertState = null;
+        this.el.alertBanner.hidden = true;
+    },
+
+    renderAlert() {
+        const s = this.alertState;
+        if (!s) return;
+
+        this.el.alertTitle.textContent = Lang.t('alertTitle');
+        this.el.alertText.textContent = Lang.t('alertBody').replace('{n}', s.spo2);
+
+        const hints = { unsupported: 'notifUnsupported', denied: 'notifBlocked', default: 'notifDefault', noworker: 'notifNoWorker', error: 'notifError' };
+        const key = hints[s.status];
+        this.el.alertHint.hidden = !key;
+        if (key) this.el.alertHintText.textContent = Lang.t(key) + (s.detail ? ' (' + s.detail + ')' : '');
+
+        this.el.btnEnableNotif.hidden = s.status !== 'default';
+        this.el.btnEnableNotif.textContent = Lang.t('enableNotif');
     },
 
     // ---------- Panel de registro ----------
@@ -208,6 +255,7 @@ const UI = {
         this.el.btnExport.textContent = t('exportCsv');
         this.el.btnClear.textContent = t('clearAll');
         this.el.btnCloseHistory.setAttribute('aria-label', t('close'));
+        this.el.btnCloseAlert.setAttribute('aria-label', t('close'));
 
         const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', critical: 'scenCritical' };
         this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
@@ -217,6 +265,7 @@ const UI = {
 
         this.renderConnectBtn();
         this.renderDemoBtn();
+        this.renderAlert();
         if (!this.el.historyPanel.hidden) this.renderHistory();
     }
 };
