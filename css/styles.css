@@ -195,17 +195,26 @@ canvas {
     z-index: 25;
     background: #5c0014; color: #fff;
     border: 2px solid #ff1744; border-radius: 12px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     animation: alert-pulse 1.4s ease-in-out infinite;
 }
 .alert-main { 
     display: flex; 
-    flex-direction: column;
+    flex-direction: column; 
     align-items: flex-start; 
-    gap: 6px; 
+    gap: 4px; 
+    width: 100%;
 }
-.alert-main span { flex: 1; font-size: .9rem; }
-.alert-main strong { white-space: nowrap; }
+.alert-main strong { 
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+    display: block;
+}
+.alert-main span { 
+    font-size: 0.9rem; 
+    opacity: 0.95;
+    display: block;
+}
 .alert-hint {
     margin-top: 8px; padding-top: 8px;
     border-top: 1px solid rgba(255,255,255,.25);
