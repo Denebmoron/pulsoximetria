@@ -1,4 +1,4 @@
-// ===== Interfaz: referencias al DOM y todo lo que se muestra en pantalla =====
+// ===== Interfaz: referencias al DOM y todo lo que se muestra en pantalla ====
 
 const UI = {
     el: {},
