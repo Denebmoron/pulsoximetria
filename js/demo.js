@@ -1,21 +1,4 @@
-Claude
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Demo · JS
 // ===== Modo demo: simula lecturas para probar la app sin el oxímetro conectado =====
 // Tiene tres escenarios (normal, precaución, crítico) para probar el semáforo,
 // las notificaciones y el guardado de lecturas.
