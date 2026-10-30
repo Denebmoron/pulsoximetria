@@ -47,9 +47,7 @@
             </select>
         </div>
 
-        <input type="text" id="search-input" placeholder="Buscar por ID de paciente..." class="lang-select" style="width: 100%; margin-bottom: 12px; box-sizing: border-box;" />
-        
-        <button class="btn-cyan" id="btnConnect">Conectar</button>
+              <button class="btn-cyan" id="btnConnect">Conectar</button>
 
         <div class="spo2-circle">
             <div class="spo2-circle-inner">
@@ -74,11 +72,12 @@
     </div>
 
     <!-- Panel de registro (se abre con "Ver registro") -->
-    <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
+        <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
         <div class="history-inner">
             <div class="history-header">
                 <h2 id="historyTitle">Registro</h2>
-                <button class="icon-btn" id="btnCloseHistory" aria-label="Cerrar">✕</button>
+                  <input type="text" id="search-input" placeholder="Buscar por ID de paciente..." class="lang-select" style="width: 100%; margin-bottom: 12px; box-sizing: border-box;" />
+                 <button class="icon-btn" id="btnCloseHistory" aria-label="Cerrar">✕</button>
             </div>
             <ul class="history-list" id="historyList"></ul>
             <p class="history-empty" id="historyEmpty">Aún no hay lecturas guardadas.</p>
