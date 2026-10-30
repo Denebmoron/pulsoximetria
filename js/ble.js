@@ -4,7 +4,7 @@ const BLE = {
     device: null,
     characteristic: null,
 
-    // Corregida la comilla extra y el número final del TX (3 en vez de 1)
+    // UUIDs del servicio UART estándar (Nordic) - CORREGIDOS Y EN MINÚSCULAS
     serviceUUID: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
     charUUID: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 
