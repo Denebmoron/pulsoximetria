@@ -1,102 +1,80 @@
-// ==========================================
-// PROTOCOLO DE TELEMETRÍA WEB BLUETOOTH (Mark II)
-// ==========================================
+// ===== Bluetooth: conexión Web Bluetooth con el ESP32-S3 =====
 
-// ⚠️ CRÍTICO: Web Bluetooth exige que los UUIDs estén estrictamente en minúsculas
-const bleServiceUUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-const bleCharacteristicUUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+const BLE = {
+    device: null,
+    characteristic: null,
 
-let bluetoothDevice;
-let bleCharacteristic;
+    // UUIDs del servicio UART estándar (Nordic), compatibles con ESP32
+    serviceUUID: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    charUUID: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
 
-// ==========================================
-// 1. INICIALIZACIÓN Y BÚSQUEDA DEL REACTOR
-// ==========================================
-async function connectBLE() {
-    try {
-        console.log('Iniciando radar de telemetría...');
+    async connect() {
+        if (!navigator.bluetooth) {
+            alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android o PC.');
+            return;
+        }
 
-        // Pedir permisos al navegador filtrando por el servicio de nuestra ESP32
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [bleServiceUUID] }]
-        });
+        try {
+            UI.setConnState('connecting');
 
-        console.log('Armadura encontrada:', bluetoothDevice.name);
-        
-        // Vigilar si la placa se apaga o se aleja
-        bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+            // Solicitar dispositivo filtrando por el servicio UUID o permitiendo cualquier dispositivo con nombre
+            this.device = await navigator.bluetooth.requestDevice({
+                filters: [{ services: [this.serviceUUID] }],
+                optionalServices: [this.serviceUUID]
+            });
 
-        // Conectar al servidor GATT de la ESP32
-        console.log('Enlazando con el microcontrolador...');
-        const server = await bluetoothDevice.gatt.connect();
+            this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
 
-        // Obtener el servicio y la característica de transmisión (TX)
-        const service = await server.getPrimaryService(bleServiceUUID);
-        bleCharacteristic = await service.getCharacteristic(bleCharacteristicUUID);
+            const server = await this.device.gatt.connect();
+            const service = await server.getPrimaryService(this.serviceUUID);
+            this.characteristic = await service.getCharacteristic(this.charUUID);
 
-        // Suscribirse a la transmisión de datos en vivo
-        await bleCharacteristic.startNotifications();
-        bleCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
-        
-        console.log('¡Conexión establecida! Flujo de datos biométricos activo.');
-        
-        // OPCIONAL: Si tiene un botón o texto en su HTML, actualícelo aquí
-        // document.getElementById('estadoConexion').innerText = "Conectado: Mark II";
+            await this.characteristic.startNotifications();
+            this.characteristic.addEventListener('characteristicvaluechanged', e => this.handleData(e));
 
-    } catch (error) {
-        console.error('Fallo en el enlace táctico:', error);
+            UI.setConnState('connected');
+            UI.toast('Dispositivo Bluetooth conectado');
+
+        } catch (error) {
+            console.error('Error de conexión BLE:', error);
+            UI.setConnState('error');
+            setTimeout(() => UI.setConnState('idle'), 3000);
+        }
+    },
+
+    disconnect() {
+        if (this.device && this.device.gatt.connected) {
+            this.device.gatt.disconnect();
+        }
+        this.onDisconnected();
+    },
+
+    onDisconnected() {
+        this.device = null;
+        this.characteristic = null;
+        UI.setConnState('idle');
+        UI.resetReading();
+        UI.toast('Dispositivo desconectado');
+    },
+
+    handleData(event) {
+        const value = event.target.value;
+        const decoder = new TextDecoder('utf-8');
+        const text = decoder.decode(value).trim();
+
+        // El ESP32 envía: "beatAvg,irValue,spo2Calculado"
+        const parts = text.split(',');
+        if (parts.length >= 3) {
+            const bpm = parseInt(parts[0], 10);
+            const irValue = parseInt(parts[1], 10);
+            const spo2 = parseInt(parts[2], 10);
+
+            // Actualizar la interfaz gráfica con los valores reales
+            UI.showReading(bpm, spo2);
+            Graph.add(irValue);
+
+            // Evaluar alertas si el SpO2 entra en niveles de riesgo (< 94%)
+            Alerts.check(spo2);
+        }
     }
-}
-
-// ==========================================
-// 2. RECEPCIÓN Y DECODIFICACIÓN DE DATOS
-// ==========================================
-function handleNotifications(event) {
-    // La ESP32 envía bytes crudos, debemos decodificarlos a texto
-    const value = event.target.value;
-    const decoder = new TextDecoder('utf-8');
-    const dataString = decoder.decode(value).trim(); 
-    
-    // El firmware de la ESP32 envía: "beatAvg,irValue,spo2Calculado"
-    const dataArray = dataString.split(',');
-
-    if (dataArray.length === 3) {
-        const bpm = parseInt(dataArray[0]);
-        const irValue = parseInt(dataArray[1]);
-        const spo2 = parseInt(dataArray[2]);
-
-        // Verificamos por consola que los datos llegan puros
-        console.log(`BPM: ${bpm} | Señal PPG: ${irValue} | O2: ${spo2}%`);
-
-        // ==========================================
-        // 3. INYECCIÓN A LA INTERFAZ GRÁFICA (DOM)
-        // ==========================================
-        // Reemplace 'idDelBpm' y 'idDelSpo2' por los IDs reales de su archivo HTML
-        
-        // document.getElementById('idDelBpm').innerText = bpm;
-        // document.getElementById('idDelSpo2').innerText = spo2 + "%";
-        
-        // Si está usando Chart.js para dibujar la onda del pulso:
-        // actualizarGrafica(irValue); 
-    }
-}
-
-// ==========================================
-// 4. PROTOCOLOS DE DESCONEXIÓN Y SEGURIDAD
-// ==========================================
-function disconnectBLE() {
-    if (!bluetoothDevice) {
-        return;
-    }
-    console.log('Cortando conexión de forma segura...');
-    if (bluetoothDevice.gatt.connected) {
-        bluetoothDevice.gatt.disconnect();
-    } else {
-        console.log('El sistema ya estaba desconectado.');
-    }
-}
-
-function onDisconnected(event) {
-    console.log(`Se ha perdido la señal con la placa: ${event.target.name}`);
-    // document.getElementById('estadoConexion').innerText = "Señal Perdida";
-}
+};
