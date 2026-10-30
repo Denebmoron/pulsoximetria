@@ -14,8 +14,15 @@ const App = {
         UI.init();
         Graph.init(UI.el.canvas);
 
-        // OBLIGATORIO: Pedir ID al arrancar siempre
-        UI.openIdPrompt({ canCancel: false });
+        // Recuperar ID guardado previamente si existe
+        const savedId = localStorage.getItem('pulsoxi_current_id');
+        if (savedId) {
+            this.currentId = savedId;
+            UI.setPatient(savedId);
+        } else {
+            // Si no hay ID, abrir el panel de identificación de forma obligatoria al arrancar
+            UI.openIdPrompt({ canCancel: false });
+        }
 
         // --- Eventos de Conexión y Demo ---
         UI.el.btnConnect.addEventListener('click', () => {
@@ -72,7 +79,7 @@ const App = {
     submitId() {
         const val = UI.el.idInput.value.trim();
         if (!val || val.length > 20) {
-            UI.showIdError(Lang.t('idInvalid') || 'El ID debe tener entre 1 y 20 caracteres');
+            UI.showIdError(Lang.t('idInvalid'));
             return;
         }
         this.currentId = val;
@@ -82,17 +89,13 @@ const App = {
         UI.toast(Lang.t('saved') || 'ID Actualizado');
     },
 
-    applyReading(bpm, spo2) {
-        UI.showReading(bpm, spo2);
-        Alerts.check(spo2);
-    },
-
     saveReading() {
         if (!this.currentId) {
             UI.openIdPrompt({ canCancel: false });
             return;
         }
 
+        // Obtener valores actuales de la interfaz
         const bpmText = UI.el.bpm.textContent;
         const spo2Text = UI.el.spo2.textContent;
 
@@ -144,4 +147,5 @@ const App = {
     }
 };
 
+// Arrancar la aplicación cuando cargue la página
 window.addEventListener('DOMContentLoaded', () => App.init());
