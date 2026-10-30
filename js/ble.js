@@ -4,9 +4,9 @@ const BLE = {
     device: null,
     characteristic: null,
 
-    // UUIDs del servicio UART estándar (Nordic)
-    serviceUUID: '"6e400001-b5a3-f393-e0a9-e50e24dcca9e",
-    charUUID: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+    // Corregida la comilla extra y el número final del TX (3 en vez de 1)
+    serviceUUID: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+    charUUID: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 
     async connect() {
         if (!navigator.bluetooth) {
