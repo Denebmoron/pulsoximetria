@@ -1,10 +1,10 @@
-// ===== Bluetooth: conexión Web Bluetooth con el ESP32-S3 =====
+// ===== Bluetooth: conexión directa con el ESP32-S3 por nombre =====
 
 const BLE = {
     device: null,
     characteristic: null,
 
-    // UUIDs del servicio UART estándar (Nordic), compatibles con ESP32
+    // UUIDs del servicio UART estándar (Nordic)
     serviceUUID: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
     charUUID: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
 
@@ -17,9 +17,11 @@ const BLE = {
         try {
             UI.setConnState('connecting');
 
-            // Solicitar dispositivo filtrando por el servicio UUID o permitiendo cualquier dispositivo con nombre
+            // Búsqueda directa filtrando por el nombre exacto que configuraste en la ESP32-S3 ("MarkII_PPG")
             this.device = await navigator.bluetooth.requestDevice({
-                filters: [{ services: [this.serviceUUID] }],
+                filters: [
+                    { name: 'MarkII_PPG' }
+                ],
                 optionalServices: [this.serviceUUID]
             });
 
@@ -73,7 +75,7 @@ const BLE = {
             UI.showReading(bpm, spo2);
             Graph.add(irValue);
 
-            // Evaluar alertas si el SpO2 entra en niveles de riesgo (< 94%)
+            // Evaluar alertas si el SpO2 entra en niveles de riesgo
             Alerts.check(spo2);
         }
     }
