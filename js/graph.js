@@ -12,6 +12,11 @@ const Graph = {
         this.lastY = canvas.height / 2;
     },
 
+    // Método puente para que demo.js y BLE puedan usar .add()
+    add(irValue) {
+        this.draw(irValue);
+    },
+
     // Mapea un valor de un rango a otro
     mapValue(x, inMin, inMax, outMin, outMax) {
         return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
@@ -22,7 +27,6 @@ const Graph = {
         const { canvas, ctx } = this;
 
         // Mapear el valor IR para que encaje en el canvas (ajustar según el ruido del sensor)
-        // Se asume un delta simulado para el efecto visual, ya que el IR crudo es muy alto
         const mappedY = this.mapValue(irValue % 1000, 0, 1000, canvas.height, 0);
 
         ctx.beginPath();
