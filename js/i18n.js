@@ -28,14 +28,22 @@ const I18N = {
         exported: 'Archivo descargado',
         nothingToExport: 'No hay nada que exportar',
 
-    // ... tus otras traducciones ...
-    idTitle: 'Identificación',
-    idHelp: 'Ingresa tu número de identificación para empezar. Se guarda con cada lectura.',
-    idPlaceholder: 'Número de identificación',
-    idOk: 'Continuar',
-    idCancel: 'Cancelar',
-    idChange: 'Cambiar ID',
-    idChip: 'ID: {id}'
+        // Textos del panel de identificación
+        idTitle: 'Identificación',
+        idHelp: 'Ingresa tu número de identificación para empezar. Se guarda con cada lectura.',
+        idPlaceholder: 'Número de identificación',
+        idOk: 'Continuar',
+        idCancel: 'Cancelar',
+        idChange: 'Cambiar ID',
+        idChip: 'ID: {id}',
+        idInvalid: 'El ID debe tener entre 1 y 20 caracteres',
+
+        // Búsqueda y contadores
+        emptySearch: 'No hay lecturas que coincidan con la búsqueda',
+        countAll: 'Total de lecturas: {n}',
+        countFiltered: 'Mostrando {n} de {m} lecturas',
+        clearFiltered: 'Borrar filtradas ({n})',
+        confirmClearFiltered: '¿Borrar las {n} lecturas filtradas? No se puede deshacer.',
 
         // Nuevos escenarios ampliados para los 4 niveles clínicos
         scenNormal: 'Normal',
@@ -79,6 +87,24 @@ const I18N = {
         cleared: 'Log cleared',
         exported: 'File downloaded',
         nothingToExport: 'Nothing to export',
+
+        // ID panel texts
+        idTitle: 'Identification',
+        idHelp: 'Enter your ID number to start. It is saved with each reading.',
+        idPlaceholder: 'ID number',
+        idOk: 'Continue',
+        idCancel: 'Cancel',
+        idChange: 'Change ID',
+        idChip: 'ID: {id}',
+        idInvalid: 'ID must be between 1 and 20 characters',
+
+        // Search and counters
+        emptySearch: 'No readings match the search',
+        countAll: 'Total readings: {n}',
+        countFiltered: 'Showing {n} of {m} readings',
+        clearFiltered: 'Clear filtered ({n})',
+        confirmClearFiltered: 'Clear the {n} filtered readings? This cannot be undone.',
+
         // Expanded scenarios for the clinical levels
         scenNormal: 'Normal',
         scenCaution: 'Mild hypoxia',
