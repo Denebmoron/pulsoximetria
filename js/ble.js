@@ -43,6 +43,10 @@ const BLE = {
 
             const server = await this.device.gatt.connect();
             
+            // Pausa de estabilidad para permitir que el ESP32 estabilice el enlace GATT
+            this.logDiag('Estabilizando enlace...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             this.logDiag('Buscando servicio principal...');
             const service = await server.getPrimaryService(this.serviceUUID);
             
