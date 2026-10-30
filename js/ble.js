@@ -8,6 +8,13 @@ const BLE = {
     serviceUUID: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
     charUUID: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
 
+    logDiag(msg) {
+        console.log(msg);
+        if (window.__diag && typeof window.__diag.show === 'function') {
+            window.__diag.show('BLE: ' + msg);
+        }
+    },
+
     async connect() {
         if (!navigator.bluetooth) {
             alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android o PC.');
@@ -16,6 +23,7 @@ const BLE = {
 
         try {
             UI.setConnState('connecting');
+            this.logDiag('Iniciando escaneo de dispositivos...');
 
             // Desconectar dispositivo previo si quedó en caché
             if (this.device && this.device.gatt.connected) {
@@ -30,20 +38,28 @@ const BLE = {
                 optionalServices: [this.serviceUUID]
             });
 
+            this.logDiag('Dispositivo seleccionado. Conectando al servidor GATT...');
             this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
 
             const server = await this.device.gatt.connect();
+            
+            this.logDiag('Buscando servicio principal...');
             const service = await server.getPrimaryService(this.serviceUUID);
+            
+            this.logDiag('Buscando característica TX...');
             this.characteristic = await service.getCharacteristic(this.charUUID);
 
+            this.logDiag('Activando notificaciones...');
             await this.characteristic.startNotifications();
             this.characteristic.addEventListener('characteristicvaluechanged', e => this.handleData(e));
 
             UI.setConnState('connected');
             UI.toast('Dispositivo Bluetooth conectado');
+            this.logDiag('¡Conexión establecida con éxito!');
 
         } catch (error) {
             console.error('Error de conexión BLE:', error);
+            this.logDiag('Fallo: ' + (error.message || error));
             UI.setConnState('error');
             setTimeout(() => UI.setConnState('idle'), 3000);
         }
@@ -62,6 +78,7 @@ const BLE = {
         UI.setConnState('idle');
         UI.resetReading();
         UI.toast('Dispositivo desconectado');
+        this.logDiag('Dispositivo desconectado');
     },
 
     handleData(event) {
