@@ -1,28 +1,4 @@
-Claude
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Records · JS
 // ===== Registro: guarda las lecturas en el navegador (localStorage) =====
 // Los datos (incluido el ID de cada persona) quedan en este celular/navegador;
 // no se envían a ningún servidor.
