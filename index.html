@@ -1,14 +1,13 @@
-Index · HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulsoximetría Mark II</title>
-    <link rel="stylesheet" href="css/styles.css?v=7">
+    <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
- 
+
     <!-- Diagnóstico: si algo falla al cargar o ejecutarse, lo muestra aquí (sirve en el celular, sin consola).
          Toca el aviso para cerrarlo. -->
     <div id="diag" hidden style="position:fixed;top:0;left:0;right:0;z-index:30;background:#b00020;color:#fff;font:13px/1.35 system-ui,sans-serif;padding:6px 12px;cursor:pointer"></div>
@@ -41,7 +40,7 @@ Index · HTML
         window.__diag = { show: show, failed: failed };
     })();
     </script>
- 
+
     <div class="main-container">
         <div class="header">
             <h1 id="title">Revisa tu pulsoximetría</h1>
@@ -50,33 +49,33 @@ Index · HTML
                 <option value="en">English</option>
             </select>
         </div>
- 
+
         <button class="id-chip" id="btnChangeId" aria-label="Cambiar ID">ID: --</button>
- 
+
         <button class="btn-cyan" id="btnConnect">Conectar</button>
- 
+
         <div class="spo2-circle">
             <div class="spo2-circle-inner">
                 <span id="spo2Value">-- % SpO2</span>
             </div>
         </div>
- 
+
         <div class="bpm-card">
             <div class="heart-icon">❤️</div>
             <div class="bpm-value"><span id="bpmValue">0</span> Bpm</div>
         </div>
- 
+
         <div class="btn-row">
             <button class="btn-cyan" id="btnSave">Guardar</button>
             <button class="btn-cyan" id="btnHistory">Ver registro</button>
         </div>
- 
+
         <div class="chart-section">
             <h3 id="chartTitle">Curva pletismográfica de la señal</h3>
             <canvas id="plethCanvas" width="400" height="120"></canvas>
         </div>
     </div>
- 
+
     <!-- Ventana de identificación: se abre al ingresar y al tocar la etiqueta "ID: ..." -->
     <section class="id-panel" id="idPanel" role="dialog" aria-modal="true" aria-labelledby="idTitle" hidden>
         <div class="id-card">
@@ -90,7 +89,7 @@ Index · HTML
             </div>
         </div>
     </section>
- 
+
     <!-- Panel de registro (se abre con "Ver registro") -->
     <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
         <div class="history-inner">
@@ -108,7 +107,7 @@ Index · HTML
             </div>
         </div>
     </section>
- 
+
     <!-- Aviso de alerta en pantalla: sale siempre que el SpO2 entra en rojo -->
     <div class="alert-banner" id="alertBanner" role="alert" hidden>
         <div class="alert-main">
@@ -121,22 +120,22 @@ Index · HTML
             <button class="btn-ghost" id="btnEnableNotif" hidden>Activar notificaciones</button>
         </div>
     </div>
- 
+
     <!-- Aviso breve en pantalla (confirmaciones) -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
- 
+
     <!-- Escenarios del demo: tres puntitos que solo aparecen mientras el demo está activo -->
     <div class="demo-scenarios" id="demoScenarios" hidden>
         <button class="scen scen-red" data-scenario="critical" title="Crítico" aria-label="Crítico"></button>
         <button class="scen scen-yellow" data-scenario="caution" title="Precaución" aria-label="Precaución"></button>
         <button class="scen scen-green active" data-scenario="normal" title="Normal" aria-label="Normal"></button>
     </div>
- 
+
     <!-- Disparador del modo demo: un punto discreto, no un botón visible -->
     <button class="demo-trigger" id="btnDemo" title="Demo" aria-label="Demo"></button>
- 
+
     <!-- El orden importa: cada archivo usa a los que están antes que él -->
-      <script src="js/i18n.js?v=8"></script>
+    <script src="js/i18n.js?v=8"></script>
     <script src="js/graph.js?v=8"></script>
     <script src="js/alerts.js?v=8"></script>
     <script src="js/records.js?v=8"></script>
@@ -144,6 +143,7 @@ Index · HTML
     <script src="js/ble.js?v=8"></script>
     <script src="js/demo.js?v=8"></script>
     <script src="js/main.js?v=8"></script>
+    <script>
     // Revisión final: si un archivo cargó pero no define lo que debe, probablemente es el archivo equivocado
     (function () {
         var d = window.__diag;
@@ -162,4 +162,3 @@ Index · HTML
     </script>
 </body>
 </html>
- 
