@@ -7,6 +7,10 @@ const UI = {
     toastTimer: null,
     alertState: null, // { spo2, status, detail } mientras el aviso de alerta está visible
 
+    // Al conectar o iniciar demo, si no hay ID, se solicita:
+let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
+
+    
     // Guarda las referencias a los elementos de la página
     init() {
         const $ = id => document.getElementById(id);
