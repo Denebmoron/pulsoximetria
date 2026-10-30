@@ -4,7 +4,7 @@ const BLE = {
     device: null,
     characteristic: null,
 
-    // UUIDs del servicio UART estándar (Nordic) - CORREGIDOS Y EN MINÚSCULAS
+    // UUIDs del servicio UART estándar (Nordic)
     serviceUUID: "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
     charUUID: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 
@@ -17,7 +17,7 @@ const BLE = {
         try {
             UI.setConnState('connecting');
 
-            // Búsqueda directa filtrando por el nombre exacto que configuraste en la ESP32-S3 ("MarkII_PPG")
+            // Búsqueda directa filtrando por el nombre exacto configurado en la ESP32-S3 ("MarkII_PPG")
             this.device = await navigator.bluetooth.requestDevice({
                 filters: [
                     { name: 'MarkII_PPG' }
@@ -39,6 +39,8 @@ const BLE = {
 
         } catch (error) {
             console.error('Error de conexión BLE:', error);
+            // Esto te mostrará el error exacto en una ventana emergente si algo falla al conectar
+            alert('Error BLE: ' + (error.message || error));
             UI.setConnState('error');
             setTimeout(() => UI.setConnState('idle'), 3000);
         }
