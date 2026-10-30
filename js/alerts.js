@@ -22,7 +22,7 @@ const Alerts = {
     COOLDOWN_MS: 5 * 60 * 1000, // no reenviar el WhatsApp más de una vez cada 5 min
     lastLevel: null,
     lastWhatsappAt: 0,
-    workerError: '', // motivo si el service worker no se pudo registrar (se muestra como ayuda)
+    workerError: '', // motivo si el service worker no se pudo registrar
 
     // Nueva sesión: la próxima lectura baja vuelve a avisar
     reset() {
@@ -32,10 +32,10 @@ const Alerts = {
     // El nivel se calcula con el valor redondeado, el mismo que se ve en pantalla
     levelFor(spo2) {
         const value = Math.round(spo2);
-        if (value < this.THRESH.severe) return 'red';       // Menor a 86% -> Rojo[cite: 1]
-        if (value < this.THRESH.moderate) return 'orange';  // 86% - 90% -> Naranja[cite: 1]
-        if (value < this.THRESH.caution) return 'yellow';   // 91% - 94% -> Amarillo[cite: 1]
-        return 'green';                                   // 95% o más -> Verde[cite: 1]
+        if (value < this.THRESH.severe) return 'red';       // Menor a 86% -> Rojo
+        if (value < this.THRESH.moderate) return 'orange';  // 86% - 90% -> Naranja
+        if (value < this.THRESH.caution) return 'yellow';   // 91% - 94% -> Amarillo
+        return 'green';                                   // 95% o más -> Verde
     },
 
     // Registra el service worker (sw.js), necesario para las notificaciones en Android.
@@ -46,11 +46,11 @@ const Alerts = {
             this.workerError = '';
         } catch (e) {
             this.workerError = String((e && e.message) || e);
-            console.warn('No se pudo registrar el service worker (¿la página usa HTTPS?):', e);
+            console.warn('No se pudo registrar el service worker:', e);
         }
     },
 
-    // Pide permiso de notificaciones. Hay que llamarla desde un clic del usuario
+    // Pide permiso de notificaciones
     async requestPermission() {
         if (!('Notification' in window)) return 'unsupported';
         if (Notification.permission === 'default') return await Notification.requestPermission();
@@ -66,7 +66,7 @@ const Alerts = {
         const title = Lang.t('alertTitle');
         const options = {
             body: Lang.t('alertBody').replace('{n}', Math.round(spo2)),
-            tag: 'spo2-alert', // evita apilar notificaciones repetidas
+            tag: 'spo2-alert',
             renotify: true,
             vibrate: [200, 100, 200]
         };
@@ -81,7 +81,7 @@ const Alerts = {
                 const reg = await Promise.race([navigator.serviceWorker.ready, timeout]);
                 await reg.showNotification(title, options);
             } else {
-                new Notification(title, options); // escritorio sin service worker
+                new Notification(title, options);
             }
             return { status: 'shown' };
         } catch (e) {
@@ -90,7 +90,7 @@ const Alerts = {
         }
     },
 
-    // Le pide al backend (server/server.js) que mande el WhatsApp al familiar.
+    // Le pide al backend que mande el WhatsApp al familiar
     async notifyWhatsApp(spo2) {
         const now = Date.now();
         if (now - this.lastWhatsappAt < this.COOLDOWN_MS) return;
@@ -102,11 +102,11 @@ const Alerts = {
                 body: JSON.stringify({ spo2: Math.round(spo2) })
             });
         } catch (e) {
-            console.error('No se pudo avisar por WhatsApp (¿está corriendo el servidor?):', e);
+            console.error('No se pudo avisar por WhatsApp:', e);
         }
     },
 
-    // Se llama en cada lectura real (BLE o demo). Dispara avisos al ENTRAR en zonas de riesgo (naranja o rojo).
+    // Se llama en cada lectura real o demo. Dispara avisos al ENTRAR en zonas de riesgo (naranja o rojo).
     check(spo2) {
         if (!Number.isFinite(spo2) || spo2 <= 0) return;
         const level = this.levelFor(spo2);
@@ -114,11 +114,11 @@ const Alerts = {
         const wasCriticalZone = (this.lastLevel === 'red' || this.lastLevel === 'orange');
 
         if (isCriticalZone && !wasCriticalZone) {
-            UI.showAlert(spo2); // aviso en pantalla: sale siempre al entrar en riesgo
-            this.notifyPhone(spo2).then(result => UI.setAlertPhoneStatus(result)); // barra del teléfono
+            UI.showAlert(spo2); 
+            this.notifyPhone(spo2).then(result => UI.setAlertPhoneStatus(result)); 
             if (this.WHATSAPP_ENABLED) this.notifyWhatsApp(spo2);
         } else if (!isCriticalZone && wasCriticalZone) {
-            UI.hideAlert(); // la lectura se recuperó a valores seguros (verde o amarillo)
+            UI.hideAlert(); 
         }
         this.lastLevel = level;
     }
