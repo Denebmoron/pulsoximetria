@@ -1,89 +1,80 @@
-// ===== Bluetooth: conexión directa con el ESP32-S3 por nombre =====
+// ===== Demo: simula lecturas continuas y escenarios clínicos =====
 
-const BLE = {
-    device: null,
-    characteristic: null,
+const Demo = {
+    on: false,
+    timer: null,
+    scenario: 'normal', // 'normal' | 'caution' | 'critical'
 
-    // UUIDs idénticos a los del ESP32
-    serviceUUID: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-    charUUID: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+    // Valores simulados actuales
+    bpm: 75,
+    spo2: 98,
+    ir: 50000,
+    phase: 0,
 
-    async connect() {
-        if (!navigator.bluetooth) {
-            alert('Tu navegador no soporta Web Bluetooth. Usa Google Chrome en Android o PC.');
-            return;
-        }
-
-        try {
-            UI.setConnState('connecting');
-
-            // Desconectar dispositivo previo si quedó en caché
-            if (this.device && this.device.gatt.connected) {
-                this.device.gatt.disconnect();
-            }
-
-            // Búsqueda directa filtrando por el nombre exacto de la ESP32-S3
-            this.device = await navigator.bluetooth.requestDevice({
-                filters: [
-                    { name: 'MarkII_PPG' }
-                ],
-                optionalServices: [this.serviceUUID]
-            });
-
-            this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
-
-            const server = await this.device.gatt.connect();
-            const service = await server.getPrimaryService(this.serviceUUID);
-            this.characteristic = await service.getCharacteristic(this.charUUID);
-
-            await this.characteristic.startNotifications();
-            this.characteristic.addEventListener('characteristicvaluechanged', e => this.handleData(e));
-
-            UI.setConnState('connected');
-            UI.toast('Dispositivo Bluetooth conectado');
-
-        } catch (error) {
-            console.error('Error de conexión BLE:', error);
-            // Mostramos el error exacto en pantalla para saber en qué línea falló
-            alert('Error BLE: ' + (error.message || error));
-            UI.setConnState('error');
-            setTimeout(() => UI.setConnState('idle'), 3000);
+    toggle() {
+        if (this.on) {
+            this.stop();
+        } else {
+            this.start();
         }
     },
 
-    disconnect() {
-        if (this.device && this.device.gatt.connected) {
-            this.device.gatt.disconnect();
-        }
-        this.onDisconnected();
+    start() {
+        this.on = true;
+        UI.setDemoActive(true);
+        UI.toast(Lang.t('demoStarted') || 'Modo Demo activado');
+        this.loop();
     },
 
-    onDisconnected() {
-        this.device = null;
-        this.characteristic = null;
-        UI.setConnState('idle');
+    stop() {
+        this.on = false;
+        clearTimeout(this.timer);
+        UI.setDemoActive(false);
         UI.resetReading();
-        UI.toast('Dispositivo desconectado');
+        UI.toast(Lang.t('demoStopped') || 'Modo Demo detenido');
     },
 
-    handleData(event) {
-        const value = event.target.value;
-        const decoder = new TextDecoder('utf-8');
-        const text = decoder.decode(value).trim();
+    setScenario(name) {
+        this.scenario = name;
+        UI.setScenario(name);
 
-        // El ESP32 envía: "beatAvg,irValue,spo2Calculado"
-        const parts = text.split(',');
-        if (parts.length >= 3) {
-            const bpm = parseInt(parts[0], 10);
-            const irValue = parseInt(parts[1], 10);
-            const spo2 = parseInt(parts[2], 10);
-
-            // Actualizar la interfaz gráfica con los valores reales
-            UI.showReading(bpm, spo2);
-            Graph.add(irValue);
-
-            // Evaluar alertas si el SpO2 entra en niveles de riesgo
-            Alerts.check(spo2);
+        switch (name) {
+            case 'critical':
+                this.bpm = 125;
+                this.spo2 = 87; // Nivel crítico (<90)
+                break;
+            case 'caution':
+                this.bpm = 105;
+                this.spo2 = 92; // Nivel de precaución (90-94)
+                break;
+            case 'normal':
+            default:
+                this.bpm = 75;
+                this.spo2 = 98; // Nivel normal (>=95)
+                break;
         }
+    },
+
+    loop() {
+        if (!this.on) return;
+
+        // Simular variación pequeña en BPM y SpO2 según el escenario
+        const bpmVariation = Math.floor(Math.random() * 3) - 1;
+        const currentBpm = Math.max(40, Math.min(180, this.bpm + bpmVariation));
+
+        // Generar onda pletismográfica simulada (curva PPG con seno y ruido)
+        this.phase += (currentBpm / 60) * 0.2;
+        const ppgWave = Math.sin(this.phase) * 15000 + Math.sin(this.phase * 2) * 5000;
+        const simulatedIR = 60000 + ppgWave + (Math.random() * 1000 - 500);
+
+        // Actualizar la interfaz y la gráfica
+        UI.showReading(currentBpm, this.spo2);
+        Graph.add(simulatedIR);
+
+        // Evaluar alertas si aplica
+        Alerts.check(this.spo2);
+
+        // Repetir el ciclo cada ~50ms (~20 FPS para la gráfica)
+        this.timer = setTimeout(() => this.loop(), 50);
     }
 };
