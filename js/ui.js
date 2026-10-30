@@ -6,11 +6,13 @@ const UI = {
     demoOn: false,
     toastTimer: null,
     alertState: null, // { spo2, status, detail } mientras el aviso de alerta está visible
+    patientId: 'Sin ID',
 
-    // Al conectar o iniciar demo, si no hay ID, se solicita:
-let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
+    // Solicita el ID al inicializar o arrancar
+    askPatientId() {
+        this.patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
+    },
 
-    
     // Guarda las referencias a los elementos de la página
     init() {
         const $ = id => document.getElementById(id);
@@ -25,6 +27,7 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
             bpm: $('bpmValue'),
             spo2: $('spo2Value'),
             spo2Circle: document.querySelector('.spo2-circle'),
+            bpmCard: document.querySelector('.bpm-card'), // Referencia a la tarjeta BPM para los colores
             canvas: $('plethCanvas'),
             scenarios: $('demoScenarios'),
             historyPanel: $('historyPanel'),
@@ -47,39 +50,56 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
 
     // ---------- Lectura en vivo ----------
 
-    // Muestra BPM y SpO2 (cada uno solo si llegó un valor válido)
+    // Muestra BPM y SpO2, aplicando colores de alerta también al BPM (ej. rojo si >= 110 lpm)
     showReading(bpm, spo2) {
-        if (bpm > 0) this.el.bpm.textContent = bpm;
+        if (bpm > 0) {
+            this.el.bpm.textContent = bpm;
+            
+            // Lógica de colores para el BPM (Tarjeta de frecuencia cardíaca)
+            // Normal: 60-100, Precaución: 50-59 o 101-109, Crítico/Rojo: <50 o >=110
+            let bpmLevel = 'green';
+            if (bpm < 50 || bpm >= 110) {
+                bpmLevel = 'red';
+            } else if (bpm < 60 || bpm > 100) {
+                bpmLevel = 'yellow';
+            }
+            
+            if (this.el.bpmCard) {
+                this.el.bpmCard.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
+                this.el.bpmCard.classList.add('level-' + bpmLevel);
+            }
+        }
 
         if (Number.isFinite(spo2) && spo2 > 0) {
             const pct = Math.min(100, Math.max(0, spo2));
             this.el.spo2.textContent = Math.round(spo2) + ' % SpO2';
             this.el.spo2Circle.style.setProperty('--pct', pct);
 
-            const level = Alerts.levelFor(spo2); // los umbrales viven en alerts.js, una sola fuente de verdad
-            this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-red');
+            const level = Alerts.levelFor(spo2); // los umbrales viven en alerts.js
+            this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
             this.el.spo2Circle.classList.add('level-' + level);
         }
     },
 
-    // Deja la pantalla como al inicio (sin lectura, anillo vacío)
+    // Deja la pantalla como al inicio (sin lectura, anillo y tarjeta limpios)
     resetReading() {
         this.el.bpm.textContent = '0';
         this.el.spo2.textContent = '-- % SpO2';
         this.el.spo2Circle.style.setProperty('--pct', 0);
-        this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-red');
+        this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
+        if (this.el.bpmCard) {
+            this.el.bpmCard.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
+        }
         this.hideAlert();
     },
 
     // ---------- Botones de conexión y demo ----------
 
-    // Cambia el estado del botón Conectar y lo repinta
     setConnState(state) {
         this.connState = state;
         this.renderConnectBtn();
     },
 
-    // Activa/desactiva el aspecto de demo, bloquea Conectar y muestra los escenarios
     setDemoActive(on) {
         this.demoOn = on;
         this.el.btnConnect.disabled = on;
@@ -87,7 +107,6 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         this.renderDemoBtn();
     },
 
-    // Marca cuál escenario del demo está activo
     setScenario(name) {
         this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
             b.classList.toggle('active', b.dataset.scenario === name);
@@ -117,16 +136,14 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         this.toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
     },
 
-    // ---------- Aviso de alerta (SpO2 en rojo) ----------
+    // ---------- Aviso de alerta ----------
 
-    // Muestra el aviso en pantalla. El estado de la notificación del teléfono llega después.
     showAlert(spo2) {
         this.alertState = { spo2: Math.round(spo2), status: null, detail: '' };
         this.renderAlert();
         this.el.alertBanner.hidden = false;
     },
 
-    // Si la notificación del teléfono no pudo salir, explica por qué dentro del aviso
     setAlertPhoneStatus(result) {
         if (!this.alertState) return;
         this.alertState.status = result.status;
@@ -168,7 +185,6 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         document.body.style.overflow = '';
     },
 
-    // Dibuja la lista agrupada por día (lo más nuevo arriba)
     renderHistory() {
         const list = this.el.historyList;
         list.textContent = '';
@@ -206,7 +222,9 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
 
         const vals = document.createElement('span');
         vals.className = 'rec-vals';
-        vals.textContent = `${r.spo2 ?? '--'} % SpO2 · ${r.bpm ?? '--'} Bpm`;
+        // Incluimos el ID del paciente en la visualización del registro si existe
+        const idText = r.patientId ? ` [ID: ${r.patientId}]` : '';
+        vals.textContent = `${r.spo2 ?? '--'} % SpO2 · ${r.bpm ?? '--'} Bpm${idText}`;
 
         li.append(dot, time, vals);
 
@@ -227,7 +245,6 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         return li;
     },
 
-    // Descarga el registro como archivo CSV
     downloadCSV() {
         if (!Records.items.length) {
             this.toast(Lang.t('nothingToExport'));
@@ -245,9 +262,6 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         this.toast(Lang.t('exported'));
     },
 
-    // ---------- Idioma ----------
-
-    // Repinta todos los textos según el idioma actual
     applyLang() {
         const t = k => Lang.t(k);
         this.el.title.textContent = t('title');
@@ -261,10 +275,12 @@ let patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
         this.el.btnCloseHistory.setAttribute('aria-label', t('close'));
         this.el.btnCloseAlert.setAttribute('aria-label', t('close'));
 
-        const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', critical: 'scenCritical' };
+        const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', borderline: 'scenBorderline', critical: 'scenCritical', severe: 'scenSevere' };
         this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
-            b.title = t(scenKeys[b.dataset.scenario]);
-            b.setAttribute('aria-label', b.title);
+            if (scenKeys[b.dataset.scenario]) {
+                b.title = t(scenKeys[b.dataset.scenario]);
+                b.setAttribute('aria-label', b.title);
+            }
         });
 
         this.renderConnectBtn();
