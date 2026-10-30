@@ -1,8 +1,7 @@
-
 // ===== Modo demo: simula lecturas para probar la app sin el oxímetro conectado =====
 // Tiene tres escenarios (normal, precaución, crítico) para probar el semáforo,
 // las notificaciones y el guardado de lecturas.
- 
+
 const Demo = {
     on: false,
     timer: null,
@@ -11,43 +10,49 @@ const Demo = {
     spo2: 97,
     noise: 0,
     scenario: 'normal',
- 
+
     // Valores hacia los que se mueve la lectura en cada escenario
     SCENARIOS: {
         normal:   { spo2: 97, bpm: 75 },   // BPM verde
         caution:  { spo2: 92, bpm: 104 },  // BPM amarillo
         critical: { spo2: 86, bpm: 118 }   // BPM rojo (> 110)
     },
- 
+
     // Pico sistólico + muesca dicrota: forma típica de una onda de pulso real
     shape(p) {
         return Math.exp(-(((p - .18) / .08) ** 2)) + .35 * Math.exp(-(((p - .45) / .1) ** 2));
     },
- 
+
     // Acerca un valor a su objetivo de a poquito, para que el anillo y el BPM cambien suave
     approach(value, target, step) {
         return value + Math.max(-step, Math.min(step, target - value));
     },
- 
+
     tick() {
         const goal = this.SCENARIOS[this.scenario];
         this.phase = (this.phase + this.bpm / 1800) % 1; // ~30 pasos/seg de reloj del demo
         const ir = Math.round(this.shape(this.phase) * 750 + 150);
- 
+
         // Pequeña variación aleatoria para que no se vea una lectura perfectamente plana
         if (Math.random() < 0.02) this.noise = (Math.random() - 0.5) * 1.2;
         this.spo2 = this.approach(this.spo2, goal.spo2 + this.noise, 0.1);
         this.bpm = this.approach(this.bpm, goal.bpm + this.noise * 2, 0.3);
- 
-        App.applyReading(Math.round(this.bpm), ir, this.spo2);
+
+        const currentBpm = Math.round(this.bpm);
+        const currentSpo2 = Math.round(this.spo2);
+
+        // Enviar datos directamente a la interfaz, la gráfica y las alertas
+        UI.showReading(currentBpm, currentSpo2);
+        Graph.add(ir);
+        Alerts.check(currentSpo2);
     },
- 
+
     setScenario(name) {
         if (!this.SCENARIOS[name]) return;
         this.scenario = name;
         UI.setScenario(name);
     },
- 
+
     start() {
         this.on = true;
         this.scenario = 'normal';
@@ -58,15 +63,15 @@ const Demo = {
         UI.setDemoActive(true);
         UI.setScenario('normal');
     },
- 
+
     stop() {
         this.on = false;
         clearInterval(this.timer);
         UI.setDemoActive(false);
+        UI.resetReading();
     },
- 
+
     toggle() {
         this.on ? this.stop() : this.start();
     }
 };
- 
