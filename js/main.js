@@ -1,6 +1,8 @@
 // ===== Arranque: une los módulos y conecta los eventos =====
 
 const App = {
+    patientId: '', // ID de la persona que está usando la app (se pide al ingresar)
+
     // Última lectura mostrada: es la que se guarda al presionar Guardar.
     // Se recuerda de dónde vino cada valor (demo o real) para marcar el registro.
     last: { bpm: 0, spo2: NaN, bpmDemo: false, spo2Demo: false },
@@ -22,14 +24,43 @@ const App = {
     },
 
     // Empieza de cero: borra la lectura mostrada y la recordada.
-    // Se usa al conectar el oxímetro, para que valores viejos (p. ej. de un demo) no se mezclen con los reales.
+    // Se usa al conectar el oxímetro y al cambiar de ID, para que valores viejos
+    // (de un demo o de otra persona) no se mezclen con los nuevos.
     resetReading() {
         this.last = { bpm: 0, spo2: NaN, bpmDemo: false, spo2Demo: false };
         UI.resetReading();
         Alerts.reset();
     },
 
+    // ---------- Identificación ----------
+
+    // ID válido: 3 a 20 caracteres, letras y números (también . - _ pero no al empezar)
+    ID_PATTERN: /^[A-Za-z0-9][A-Za-z0-9._-]{2,19}$/,
+
+    submitId() {
+        const value = UI.el.idInput.value.trim();
+        if (!this.ID_PATTERN.test(value)) {
+            UI.showIdError(Lang.t('idInvalid'));
+            return;
+        }
+        if (value !== this.patientId) this.resetReading(); // otra persona: no arrastrar su lectura
+        this.patientId = value;
+        UI.setPatient(value);
+        UI.closeIdPrompt();
+    },
+
+    changeId() {
+        UI.openIdPrompt({ canCancel: true, value: this.patientId });
+    },
+
+    // ---------- Registro ----------
+
     saveReading() {
+        if (!this.patientId) { // sin ID no se guarda
+            UI.openIdPrompt();
+            return;
+        }
+
         const { bpm, spo2, bpmDemo, spo2Demo } = this.last;
         const hasSpo2 = Number.isFinite(spo2) && spo2 > 0;
 
@@ -40,7 +71,7 @@ const App = {
 
         // Si cualquiera de los valores vino del demo, el registro queda marcado como demo
         const demo = (bpm > 0 && bpmDemo) || (hasSpo2 && spo2Demo);
-        const rec = Records.add({ bpm, spo2, demo });
+        const rec = Records.add({ bpm, spo2, demo, pid: this.patientId });
         UI.toast(Lang.t(rec ? 'saved' : 'saveError'));
     },
 
@@ -65,10 +96,20 @@ const App = {
         UI.toast(Lang.t('deleted'));
     },
 
+    // Sin búsqueda borra todo el registro; con búsqueda, solo las lecturas que se ven
     clearRecords() {
-        if (!Records.items.length) return;
-        if (!confirm(Lang.t('confirmClear'))) return;
-        Records.clear();
+        const query = UI.el.historySearch.value.trim();
+        const items = Records.filter(query);
+        if (!items.length) return;
+
+        const message = query
+            ? Lang.t('confirmClearFiltered').replace('{n}', items.length)
+            : Lang.t('confirmClear');
+        if (!confirm(message)) return;
+
+        if (query) Records.removeMany(items.map(r => r.id));
+        else Records.clear();
+
         UI.renderHistory();
         UI.toast(Lang.t('cleared'));
     },
@@ -92,12 +133,18 @@ const App = {
             if (b) Demo.setScenario(b.dataset.scenario);
         });
 
+        UI.el.btnChangeId.addEventListener('click', () => this.changeId());
+        UI.el.btnIdOk.addEventListener('click', () => this.submitId());
+        UI.el.btnIdCancel.addEventListener('click', () => UI.closeIdPrompt());
+        UI.el.idInput.addEventListener('keydown', e => { if (e.key === 'Enter') this.submitId(); });
+
         UI.el.btnCloseAlert.addEventListener('click', () => UI.hideAlert());
         UI.el.btnEnableNotif.addEventListener('click', () => this.enableNotifications());
 
         UI.el.btnSave.addEventListener('click', () => this.saveReading());
         UI.el.btnHistory.addEventListener('click', () => UI.openHistory());
         UI.el.btnCloseHistory.addEventListener('click', () => UI.closeHistory());
+        UI.el.historySearch.addEventListener('input', () => UI.renderHistory());
         UI.el.btnExport.addEventListener('click', () => UI.downloadCSV());
         UI.el.btnClear.addEventListener('click', () => this.clearRecords());
         UI.el.historyList.addEventListener('click', e => {
@@ -110,7 +157,8 @@ const App = {
             UI.applyLang();
         });
 
-        UI.applyLang(); // Aplica el idioma por defecto (es) al cargar
+        UI.applyLang();                       // Aplica el idioma por defecto (es) al cargar
+        UI.openIdPrompt({ canCancel: false }); // Lo primero: pedir el ID
     }
 };
 
