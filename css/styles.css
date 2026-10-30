@@ -88,20 +88,22 @@ body {
     text-align: center;
 }
 
-/* ===== Tarjeta BPM con indicador de color ===== */
+/* ===== Tarjeta BPM ===== */
 .bpm-card {
+    --bpm-color: var(--text-white); /* el semáforo del BPM cambia esto según el nivel */
     background-color: var(--card-bg);
-    width: 100%; padding: 20px; border-radius: 12px;
+    width: 100%; padding: 18px; border-radius: 12px;
+    border: 2px solid transparent;
     display: flex; align-items: center; justify-content: center;
     gap: 15px; margin-bottom: 20px;
     box-sizing: border-box;
-    border: 2px solid transparent; /* Por defecto transparente */
-    transition: border-color 0.3s ease;
+    transition: border-color .4s ease;
 }
-.bpm-card.level-green  { border-color: #00e676; }
-.bpm-card.level-yellow { border-color: #ffea00; }
-.bpm-card.level-orange { border-color: #ff9800; }
-.bpm-card.level-red    { border-color: #ff1744; }
+/* Semáforo del BPM: verde 60-100, amarillo 101-110 y menos de 60, rojo más de 110 (ajustable en js/alerts.js) */
+.bpm-card.level-green  { --bpm-color: #00e676; border-color: #00e676; }
+.bpm-card.level-yellow { --bpm-color: #ffea00; border-color: #ffea00; }
+.bpm-card.level-red    { --bpm-color: #ff1744; border-color: #ff1744; }
+.bpm-value { font-size: 1.5rem; font-weight: bold; color: var(--bpm-color); transition: color .4s ease; }
 
 /* ===== Gráfica ===== */
 .chart-section { width: 100%; text-align: left; }
@@ -142,13 +144,16 @@ canvas {
     background: var(--card-bg); border-radius: 10px;
     padding: 8px 8px 8px 12px; margin-bottom: 8px;
 }
-.rec-time { font-variant-numeric: tabular-nums; opacity: .7; font-size: .85rem; }
-.rec-vals { flex: 1; font-weight: bold; font-size: .95rem; }
+.rec-body { flex: 1; min-width: 0; }
+.rec-top { display: flex; align-items: center; gap: 8px; font-size: .8rem; margin-bottom: 3px; }
+.rec-id { font-weight: bold; color: var(--cyan); word-break: break-all; }
+.rec-time { font-variant-numeric: tabular-nums; opacity: .7; }
+.rec-vals { font-weight: bold; font-size: .95rem; }
+.rec-vals .level-green  { color: #00e676; }
+.rec-vals .level-yellow { color: #ffea00; }
+.rec-vals .level-red    { color: #ff1744; }
+.rec-vals .level-none   { color: #9aa0b4; }
 .tag { font-size: .7rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,229,255,.18); color: var(--cyan); }
-.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: #666; }
-.dot.level-green  { background: #00e676; }
-.dot.level-yellow { background: #ffea00; }
-.dot.level-red    { background: #ff1744; }
 .history-empty { opacity: .6; text-align: center; margin: 40px 0; }
 .history-actions { display: flex; gap: 10px; justify-content: center; }
 
@@ -182,3 +187,70 @@ canvas {
 .scen-green  { background: #00e676; color: #00e676; }
 .scen-yellow { background: #ffea00; color: #ffea00; }
 .scen-red    { background: #ff1744; color: #ff1744; }
+
+/* ===== Aviso de alerta en pantalla (SpO2 en rojo) ===== */
+.alert-banner {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 20px); max-width: 400px; box-sizing: border-box;
+    z-index: 25;
+    background: #5c0014; color: #fff;
+    border: 2px solid #ff1744; border-radius: 12px;
+    padding: 10px 12px;
+    animation: alert-pulse 1.4s ease-in-out infinite;
+}
+.alert-main { display: flex; align-items: center; gap: 8px; }
+.alert-main span { flex: 1; font-size: .9rem; }
+.alert-main strong { white-space: nowrap; }
+.alert-hint {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.25);
+    font-size: .8rem; line-height: 1.35;
+}
+.alert-hint .btn-ghost { margin-top: 8px; padding: 8px 12px; }
+@keyframes alert-pulse {
+    0%, 100% { box-shadow: 0 4px 18px rgba(255,23,68,.35); }
+    50%      { box-shadow: 0 4px 26px rgba(255,23,68,.85); }
+}
+
+.btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ===== Etiqueta del ID (bajo el encabezado) ===== */
+.id-chip {
+    align-self: flex-start; margin-bottom: 14px;
+    background: var(--card-bg); color: var(--text-white);
+    border: 1px solid rgba(0,229,255,.4); border-radius: 999px;
+    padding: 6px 14px; font-size: .85rem; cursor: pointer;
+}
+.id-chip::after { content: ' \270E'; opacity: .6; }
+
+/* ===== Ventana de identificación ===== */
+.id-panel {
+    position: fixed; inset: 0; z-index: 28;
+    background: rgba(5,5,26,.96);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 15vh 20px 20px; box-sizing: border-box; overflow-y: auto;
+}
+.id-panel[hidden] { display: none; }
+.id-card { width: 100%; max-width: 400px; background: var(--card-bg); border-radius: 14px; padding: 22px 20px; box-sizing: border-box; }
+.id-card h2 { font-size: 1.2rem; margin: 0 0 8px; }
+.id-card p { margin: 0 0 14px; font-size: .9rem; opacity: .8; line-height: 1.4; }
+.id-card input {
+    width: 100%; box-sizing: border-box;
+    background: var(--bg-color); color: var(--text-white);
+    border: 1px solid rgba(255,255,255,.25); border-radius: 8px;
+    padding: 12px; font-size: 1.1rem;
+}
+.id-card input:focus { outline: 2px solid var(--cyan); border-color: transparent; }
+.id-card .id-error { color: #ff6b81; opacity: 1; margin: 10px 0 0; font-size: .85rem; }
+.id-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.id-actions .btn-cyan { margin-bottom: 0; align-self: auto; }
+
+/* ===== Búsqueda en el registro ===== */
+.history-search {
+    width: 100%; box-sizing: border-box;
+    background: var(--card-bg); color: var(--text-white);
+    border: 1px solid rgba(255,255,255,.2); border-radius: 8px;
+    padding: 10px 12px; font-size: 1rem; margin-bottom: 8px;
+}
+.history-search:focus { outline: 2px solid var(--cyan); border-color: transparent; }
+.history-count { font-size: .8rem; opacity: .6; margin: 0 0 4px; }
