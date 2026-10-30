@@ -1,127 +1,184 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pulsoximetría Mark II</title>
-    <link rel="stylesheet" href="css/styles.css?v=6">
-</head>
-<body>
+/* ===== Variables y base ===== */
+:root {
+    --bg-color: #05051a;
+    --cyan: #00e5ff;
+    --card-bg: #1a1a2e;
+    --text-white: #ffffff;
+}
+body {
+    background-color: var(--bg-color);
+    color: var(--text-white);
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.main-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
 
-    <!-- Diagnóstico: si algo falla al cargar o ejecutarse, lo muestra aquí (sirve en el celular, sin consola).
-         Toca el aviso para cerrarlo. -->
-    <div id="diag" hidden style="position:fixed;top:0;left:0;right:0;z-index:30;background:#b00020;color:#fff;font:13px/1.35 system-ui,sans-serif;padding:6px 12px;cursor:pointer"></div>
-    <script>
-    (function () {
-        var box = document.getElementById('diag');
-        var shown = {};
-        function show(msg) {
-            if (shown[msg]) return;
-            shown[msg] = true;
-            var p = document.createElement('p');
-            p.style.margin = '4px 0';
-            p.textContent = msg;
-            box.appendChild(p);
-            box.hidden = false;
-        }
-        // En fase de captura para detectar también archivos que no se pudieron descargar (404)
-        window.addEventListener('error', function (e) {
-            var t = e.target;
-            if (t && t.tagName === 'SCRIPT' && t.getAttribute('src')) {
-                show('No se pudo cargar ' + t.getAttribute('src').split('?')[0] + ' (revisa que esté subido en esa ruta del repositorio)');
-            } else if (e.message) {
-                var file = (e.filename || '').split('/').pop().split('?')[0];
-                show('Error: ' + e.message + (file ? ' (' + file + ':' + e.lineno + ')' : ''));
-            }
-        }, true);
-        box.addEventListener('click', function () { box.hidden = true; });
-    })();
-    </script>
+/* ===== Cabecera e idioma ===== */
+.header {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.header h1 { font-size: 1.2rem; margin: 0; }
+.lang-select {
+    background: #222; color: white; border: none;
+    padding: 5px 10px; border-radius: 5px;
+}
 
-    <div class="main-container">
-        <div class="header">
-            <h1 id="title">Revisa tu pulsoximetría</h1>
-            <select class="lang-select" id="langSelect" aria-label="Idioma">
-                <option value="es">Español</option>
-                <option value="en">English</option>
-            </select>
-        </div>
+/* ===== Botones ===== */
+.btn-cyan {
+    background-color: var(--cyan);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    width: fit-content;
+    align-self: flex-start;
+    margin-bottom: 30px;
+}
+.btn-cyan:active { transform: scale(0.95); }
+.btn-cyan:disabled { opacity: .5; cursor: not-allowed; }
+.btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+.btn-row .btn-cyan { margin-bottom: 0; align-self: auto; }
+.btn-ghost {
+    background: transparent; color: var(--text-white);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: 10px 16px; border-radius: 8px;
+    font-weight: bold; cursor: pointer;
+}
+.btn-ghost:active { transform: scale(0.95); }
+.btn-danger { color: #ff6b81; border-color: rgba(255,107,129,.5); }
+.icon-btn {
+    background: transparent; border: none; color: var(--text-white);
+    font-size: 1.1rem; cursor: pointer;
+    padding: 6px 10px; border-radius: 6px; opacity: .7;
+}
+.icon-btn:hover, .icon-btn:active { opacity: 1; background: rgba(255,255,255,.08); }
 
-              <button class="btn-cyan" id="btnConnect">Conectar</button>
+/* ===== Círculo SpO2: anillo que refleja el valor ===== */
+.spo2-circle {
+    --pct: 0; /* 0-100, lo actualiza JS cuando llega una lectura real */
+    --ring-color: var(--cyan); /* el semáforo cambia esto según el nivel de SpO2 */
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255,255,255,.12) 0);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 30px;
+    transition: background .6s ease;
+}
+/* Semáforo: verde >=95%, amarillo 90-94%, rojo <90% (umbrales ajustables en js/alerts.js) */
+.spo2-circle.level-green  { --ring-color: #00e676; }
+.spo2-circle.level-yellow { --ring-color: #ffea00; }
+.spo2-circle.level-red    { --ring-color: #ff1744; }
+.spo2-circle-inner {
+    width: 128px; height: 128px;
+    border-radius: 50%;
+    background: var(--bg-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: bold;
+    text-align: center;
+}
 
-        <div class="spo2-circle">
-            <div class="spo2-circle-inner">
-                <span id="spo2Value">-- % SpO2</span>
-            </div>
-        </div>
+/* ===== Tarjeta BPM con indicador de color ===== */
+.bpm-card {
+    background-color: var(--card-bg);
+    width: 100%; padding: 20px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 15px; margin-bottom: 20px;
+    box-sizing: border-box;
+    border: 2px solid transparent; /* Por defecto transparente */
+    transition: border-color 0.3s ease;
+}
+.bpm-card.level-green  { border-color: #00e676; }
+.bpm-card.level-yellow { border-color: #ffea00; }
+.bpm-card.level-orange { border-color: #ff9800; }
+.bpm-card.level-red    { border-color: #ff1744; }
 
-        <div class="bpm-card">
-            <div class="heart-icon">❤️</div>
-            <div class="bpm-value"><span id="bpmValue">0</span> Bpm</div>
-        </div>
+/* ===== Gráfica ===== */
+.chart-section { width: 100%; text-align: left; }
+.chart-section h3 { font-size: 1rem; margin-bottom: 10px; }
+canvas {
+    width: 100%; height: 120px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+}
 
-        <div class="btn-row">
-            <button class="btn-cyan" id="btnSave">Guardar</button>
-            <button class="btn-cyan" id="btnHistory">Ver registro</button>
-        </div>
+/* ===== Disparador del modo demo: un puntito casi invisible ===== */
+.demo-trigger {
+    position: fixed;
+    bottom: 14px; right: 14px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    border: none; padding: 0; cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+}
+.demo-trigger:hover { background: rgba(0,229,255,.35); transform: scale(1.4); }
+.demo-trigger.active { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
 
-        <div class="chart-section">
-            <h3 id="chartTitle">Curva pletismográfica de la señal</h3>
-            <canvas id="plethCanvas" width="400" height="120"></canvas>
-        </div>
-    </div>
+/* ===== Panel de registro ===== */
+.history-panel {
+    position: fixed; inset: 0; z-index: 10;
+    background: var(--bg-color);
+    overflow-y: auto;
+    padding: 20px; box-sizing: border-box;
+}
+.history-inner { max-width: 400px; margin: 0 auto; }
+.history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.history-header h2 { font-size: 1.2rem; margin: 0; }
+.history-list { list-style: none; padding: 0; margin: 0 0 20px; }
+.day-title { font-size: .8rem; text-transform: capitalize; opacity: .6; margin: 18px 0 8px; }
+.rec {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card-bg); border-radius: 10px;
+    padding: 8px 8px 8px 12px; margin-bottom: 8px;
+}
+.rec-time { font-variant-numeric: tabular-nums; opacity: .7; font-size: .85rem; }
+.rec-vals { flex: 1; font-weight: bold; font-size: .95rem; }
+.tag { font-size: .7rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,229,255,.18); color: var(--cyan); }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: #666; }
+.dot.level-green  { background: #00e676; }
+.dot.level-yellow { background: #ffea00; }
+.dot.level-red    { background: #ff1744; }
+.history-empty { opacity: .6; text-align: center; margin: 40px 0; }
+.history-actions { display: flex; gap: 10px; justify-content: center; }
 
-    <!-- Panel de registro (se abre con "Ver registro") -->
-        <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
-        <div class="history-inner">
-            <div class="history-header">
-                <h2 id="historyTitle">Registro</h2>
-                  <input type="text" id="search-input" placeholder="Buscar por ID de paciente..." class="lang-select" style="width: 100%; margin-bottom: 12px; box-sizing: border-box;" />
-                 <button class="icon-btn" id="btnCloseHistory" aria-label="Cerrar">✕</button>
-            </div>
-            <ul class="history-list" id="historyList"></ul>
-            <p class="history-empty" id="historyEmpty">Aún no hay lecturas guardadas.</p>
-            <div class="history-actions">
-                <button class="btn-ghost" id="btnExport">Exportar CSV</button>
-                <button class="btn-ghost btn-danger" id="btnClear">Borrar todo</button>
-            </div>
-        </div>
-    </section>
+/* ===== Aviso breve en pantalla ===== */
+.toast {
+    position: fixed; left: 50%; bottom: 60px; z-index: 20;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--card-bg); color: var(--text-white);
+    border: 1px solid rgba(0,229,255,.4);
+    padding: 10px 16px; border-radius: 8px;
+    font-size: .9rem; text-align: center; max-width: 85%;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    <!-- Aviso de alerta en pantalla: sale siempre que el SpO2 entra en rojo -->
-    <div class="alert-banner" id="alertBanner" role="alert" hidden>
-        <div class="alert-main">
-            <strong id="alertTitle"></strong>
-            <span id="alertText"></span>
-            <button class="icon-btn" id="btnCloseAlert" aria-label="Cerrar">✕</button>
-        </div>
-        <div class="alert-hint" id="alertHint" hidden>
-            <span id="alertHintText"></span>
-            <button class="btn-ghost" id="btnEnableNotif" hidden>Activar notificaciones</button>
-        </div>
-    </div>
-
-    <!-- Aviso breve en pantalla (confirmaciones) -->
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-    <!-- Escenarios del demo: tres puntitos que solo aparecen mientras el demo está activo -->
-    <div class="demo-scenarios" id="demoScenarios" hidden>
-        <button class="scen scen-red" data-scenario="critical" title="Crítico" aria-label="Crítico"></button>
-        <button class="scen scen-yellow" data-scenario="caution" title="Precaución" aria-label="Precaución"></button>
-        <button class="scen scen-green active" data-scenario="normal" title="Normal" aria-label="Normal"></button>
-    </div>
-
-    <!-- Disparador del modo demo: un punto discreto, no un botón visible -->
-    <button class="demo-trigger" id="btnDemo" title="Demo" aria-label="Demo"></button>
-
-    <!-- El orden importa: cada archivo usa a los que están antes que él -->
-    <script src="js/i18n.js?v=6"></script>
-    <script src="js/graph.js?v=6"></script>
-    <script src="js/alerts.js?v=6"></script>
-    <script src="js/records.js?v=6"></script>
-    <script src="js/ui.js?v=6"></script>
-    <script src="js/ble.js?v=6"></script>
-    <script src="js/demo.js?v=6"></script>
-    <script src="js/main.js?v=6"></script>
-</body>
-</html>
+/* ===== Escenarios del demo: puntitos discretos encima del disparador ===== */
+.demo-scenarios {
+    position: fixed; right: 14px; bottom: 36px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.demo-scenarios[hidden] { display: none; }
+.scen {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: none; padding: 0; cursor: pointer;
+    opacity: .25;
+    transition: opacity .2s ease, transform .2s ease;
+}
+.scen:hover { opacity: .8; transform: scale(1.3); }
+.scen.active { opacity: 1; box-shadow: 0 0 6px currentColor; }
+.scen-green  { background: #00e676; color: #00e676; }
+.scen-yellow { background: #ffea00; color: #ffea00; }
+.scen-red    { background: #ff1744; color: #ff1744; }
