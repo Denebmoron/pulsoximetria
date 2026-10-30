@@ -1,73 +1,109 @@
-// ===== Registro: guarda, filtra y exporta las lecturas de los pacientes =====
+Claude
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Records · JS
+// ===== Registro: guarda las lecturas en el navegador (localStorage) =====
+// Los datos (incluido el ID de cada persona) quedan en este celular/navegador;
+// no se envían a ningún servidor.
+ 
 const Records = {
+    KEY: 'pulsoximetria.registros',
+    MAX: 500, // máximo de lecturas guardadas; al pasarse se borran las más viejas
     items: [],
-
-    // Carga los registros guardados en el almacenamiento local del navegador
+ 
     load() {
         try {
-            const data = localStorage.getItem('pulsoxi_records');
-            this.items = data ? JSON.parse(data) : [];
+            const raw = localStorage.getItem(this.KEY);
+            const data = raw ? JSON.parse(raw) : [];
+            this.items = Array.isArray(data) ? data : [];
         } catch (e) {
             this.items = [];
         }
     },
-
-    // Guarda los registros actuales en el almacenamiento local
-    save() {
+ 
+    persist() {
         try {
-            localStorage.setItem('pulsoxi_records', JSON.stringify(this.items));
+            localStorage.setItem(this.KEY, JSON.stringify(this.items));
+            return true;
         } catch (e) {
-            console.error('No se pudo guardar en localStorage:', e);
+            console.error('No se pudo guardar el registro:', e);
+            return false;
         }
     },
-
-    // Agrega una nueva lectura al inicio del arreglo
-    add(record) {
-        const newRec = {
-            id: 'rec_' + Math.random().toString(36).substr(2, 9),
+ 
+    // Agrega una lectura (la más nueva queda primero). Devuelve null si no se pudo guardar.
+    // pid = ID / número de identificación de la persona.
+    add({ bpm, spo2, demo, pid }) {
+        const rec = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
             ts: Date.now(),
-            ...record
+            pid: pid || '',
+            bpm: bpm > 0 ? Math.round(bpm) : null,
+            spo2: Number.isFinite(spo2) && spo2 > 0 ? Math.round(spo2) : null,
+            demo: !!demo // las lecturas simuladas quedan marcadas para no confundirlas con reales
         };
-        this.items.unshift(newRec); // Lo más nuevo arriba
-        this.save();
-        return newRec;
+        this.items.unshift(rec);
+        if (this.items.length > this.MAX) this.items.length = this.MAX;
+ 
+        if (!this.persist()) {
+            this.items.shift();
+            return null;
+        }
+        return rec;
     },
-
-    // Elimina una lectura específica por su ID
+ 
+    // Busca por ID: coincide si el ID contiene el texto (sin distinguir mayúsculas).
+    // Con la búsqueda vacía devuelve todo. Las lecturas viejas sin ID solo salen sin búsqueda.
+    filter(query) {
+        const q = (query || '').trim().toLowerCase();
+        if (!q) return this.items;
+        return this.items.filter(r => (r.pid || '').toLowerCase().includes(q));
+    },
+ 
     remove(id) {
         this.items = this.items.filter(r => r.id !== id);
-        this.save();
+        this.persist();
     },
-
-    // Filtra las lecturas según el ID del paciente introducido en la búsqueda
-    filter(query) {
-        if (!query) return this.items;
-        const q = query.toLowerCase();
-        return this.items.filter(r => String(r.pid || '').toLowerCase().includes(q));
-    },
-
-    // Elimina múltiples registros a la vez (útil al borrar resultados filtrados)
+ 
     removeMany(ids) {
-        const idSet = new Set(ids);
-        this.items = this.items.filter(r => !idSet.has(r.id));
-        this.save();
+        const set = new Set(ids);
+        this.items = this.items.filter(r => !set.has(r.id));
+        this.persist();
     },
-
-    // Borra todo el historial
+ 
     clear() {
         this.items = [];
-        this.save();
+        this.persist();
     },
-
-    // Genera el formato CSV para exportar los datos (compatible con Excel)
-    toCSV(itemsToExport = this.items) {
-        let csv = 'Fecha,ID,BPM,SpO2,Modo\n';
-        for (const r of itemsToExport) {
-            const date = new Date(r.ts).toISOString();
-            const mode = r.demo ? 'Demo' : 'Real';
-            csv += `"${date}","${r.pid || 'Sin ID'}",${r.bpm ?? ''},${r.spo2 ?? ''},"${mode}"\n`;
+ 
+    // Texto CSV para abrir en Excel / Google Sheets (de la más vieja a la más nueva)
+    toCSV(items = this.items) {
+        const rows = [['fecha_hora', 'id', 'spo2', 'bpm', 'demo']];
+        for (const r of [...items].reverse()) {
+            rows.push([new Date(r.ts).toLocaleString('sv-SE'), r.pid || '', r.spo2 ?? '', r.bpm ?? '', r.demo ? 'si' : 'no']);
         }
-        return csv;
+        return rows.map(r => r.join(',')).join('\n');
     }
 };
+ 
