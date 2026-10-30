@@ -27,6 +27,16 @@ const I18N = {
         cleared: 'Registro borrado',
         exported: 'Archivo descargado',
         nothingToExport: 'No hay nada que exportar',
+
+    // ... tus otras traducciones ...
+    idTitle: 'Identificación',
+    idHelp: 'Ingresa tu número de identificación para empezar. Se guarda con cada lectura.',
+    idPlaceholder: 'Número de identificación',
+    idOk: 'Continuar',
+    idCancel: 'Cancelar',
+    idChange: 'Cambiar ID',
+    idChip: 'ID: {id}'
+
         // Nuevos escenarios ampliados para los 4 niveles clínicos
         scenNormal: 'Normal',
         scenCaution: 'Hipoxia leve',
