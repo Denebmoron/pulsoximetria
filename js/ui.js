@@ -4,14 +4,9 @@ const UI = {
     el: {},
     connState: 'idle', // idle | connecting | connected | error
     demoOn: false,
+    patientId: '',     // ID que se muestra en la etiqueta de arriba
     toastTimer: null,
-    alertState: null, // { spo2, status, detail } mientras el aviso de alerta está visible
-    patientId: 'Sin ID',
-
-    // Solicita el ID al inicializar o arrancar
-    askPatientId() {
-        this.patientId = prompt("Ingrese la cédula o ID del paciente:") || "Sin ID";
-    },
+    alertState: null,  // { spo2, status, detail } mientras el aviso de alerta está visible
 
     // Guarda las referencias a los elementos de la página
     init() {
@@ -19,19 +14,29 @@ const UI = {
         this.el = {
             title: $('title'),
             langSelect: $('langSelect'),
+            btnChangeId: $('btnChangeId'),
             btnConnect: $('btnConnect'),
             btnDemo: $('btnDemo'),
             btnSave: $('btnSave'),
             btnHistory: $('btnHistory'),
             chartTitle: $('chartTitle'),
             bpm: $('bpmValue'),
+            bpmCard: document.querySelector('.bpm-card'),
             spo2: $('spo2Value'),
             spo2Circle: document.querySelector('.spo2-circle'),
-            bpmCard: document.querySelector('.bpm-card'), // Referencia a la tarjeta BPM para los colores
             canvas: $('plethCanvas'),
             scenarios: $('demoScenarios'),
+            idPanel: $('idPanel'),
+            idTitle: $('idTitle'),
+            idHelp: $('idHelp'),
+            idInput: $('idInput'),
+            idError: $('idError'),
+            btnIdOk: $('btnIdOk'),
+            btnIdCancel: $('btnIdCancel'),
             historyPanel: $('historyPanel'),
             historyTitle: $('historyTitle'),
+            historySearch: $('historySearch'),
+            historyCount: $('historyCount'),
             historyList: $('historyList'),
             historyEmpty: $('historyEmpty'),
             btnCloseHistory: $('btnCloseHistory'),
@@ -50,56 +55,73 @@ const UI = {
 
     // ---------- Lectura en vivo ----------
 
-    // Muestra BPM y SpO2, aplicando colores de alerta también al BPM (ej. rojo si >= 110 lpm)
+    // Quita los colores de semáforo de un elemento y le pone el del nivel indicado (o ninguno)
+    setLevel(el, level) {
+        el.classList.remove('level-green', 'level-yellow', 'level-red');
+        if (level) el.classList.add('level-' + level);
+    },
+
+    // Muestra BPM y SpO2 (cada uno solo si llegó un valor válido), cada uno con su semáforo
     showReading(bpm, spo2) {
         if (bpm > 0) {
             this.el.bpm.textContent = bpm;
-            
-            // Lógica de colores para el BPM (Tarjeta de frecuencia cardíaca)
-            // Normal: 60-100, Precaución: 50-59 o 101-109, Crítico/Rojo: <50 o >=110
-            let bpmLevel = 'green';
-            if (bpm < 50 || bpm >= 110) {
-                bpmLevel = 'red';
-            } else if (bpm < 60 || bpm > 100) {
-                bpmLevel = 'yellow';
-            }
-            
-            if (this.el.bpmCard) {
-                this.el.bpmCard.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
-                this.el.bpmCard.classList.add('level-' + bpmLevel);
-            }
+            this.setLevel(this.el.bpmCard, Alerts.levelForBpm(bpm)); // los umbrales viven en alerts.js
         }
 
         if (Number.isFinite(spo2) && spo2 > 0) {
             const pct = Math.min(100, Math.max(0, spo2));
             this.el.spo2.textContent = Math.round(spo2) + ' % SpO2';
             this.el.spo2Circle.style.setProperty('--pct', pct);
-
-            const level = Alerts.levelFor(spo2); // los umbrales viven en alerts.js
-            this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
-            this.el.spo2Circle.classList.add('level-' + level);
+            this.setLevel(this.el.spo2Circle, Alerts.levelFor(spo2));
         }
     },
 
-    // Deja la pantalla como al inicio (sin lectura, anillo y tarjeta limpios)
+    // Deja la pantalla como al inicio (sin lectura, anillo vacío, sin colores)
     resetReading() {
         this.el.bpm.textContent = '0';
         this.el.spo2.textContent = '-- % SpO2';
         this.el.spo2Circle.style.setProperty('--pct', 0);
-        this.el.spo2Circle.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
-        if (this.el.bpmCard) {
-            this.el.bpmCard.classList.remove('level-green', 'level-yellow', 'level-orange', 'level-red');
-        }
+        this.setLevel(this.el.spo2Circle, null);
+        this.setLevel(this.el.bpmCard, null);
         this.hideAlert();
+    },
+
+    // ---------- Identificación (ID) ----------
+
+    // Muestra la etiqueta "ID: ..." de arriba
+    setPatient(id) {
+        this.patientId = id;
+        this.el.btnChangeId.textContent = Lang.t('idChip').replace('{id}', id || '--');
+    },
+
+    // Abre la ventana que pide el ID. Al empezar no se puede cancelar; al cambiar de ID sí.
+    openIdPrompt({ canCancel = false, value = '' } = {}) {
+        this.el.idInput.value = value;
+        this.el.idError.hidden = true;
+        this.el.btnIdCancel.hidden = !canCancel;
+        this.el.idPanel.hidden = false;
+        setTimeout(() => this.el.idInput.focus(), 50);
+    },
+
+    closeIdPrompt() {
+        this.el.idPanel.hidden = true;
+        this.el.idInput.blur();
+    },
+
+    showIdError(message) {
+        this.el.idError.textContent = message;
+        this.el.idError.hidden = false;
     },
 
     // ---------- Botones de conexión y demo ----------
 
+    // Cambia el estado del botón Conectar y lo repinta
     setConnState(state) {
         this.connState = state;
         this.renderConnectBtn();
     },
 
+    // Activa/desactiva el aspecto de demo, bloquea Conectar y muestra los escenarios
     setDemoActive(on) {
         this.demoOn = on;
         this.el.btnConnect.disabled = on;
@@ -107,6 +129,7 @@ const UI = {
         this.renderDemoBtn();
     },
 
+    // Marca cuál escenario del demo está activo
     setScenario(name) {
         this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
             b.classList.toggle('active', b.dataset.scenario === name);
@@ -136,14 +159,16 @@ const UI = {
         this.toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
     },
 
-    // ---------- Aviso de alerta ----------
+    // ---------- Aviso de alerta (SpO2 en rojo) ----------
 
+    // Muestra el aviso en pantalla. El estado de la notificación del teléfono llega después.
     showAlert(spo2) {
         this.alertState = { spo2: Math.round(spo2), status: null, detail: '' };
         this.renderAlert();
         this.el.alertBanner.hidden = false;
     },
 
+    // Si la notificación del teléfono no pudo salir, explica por qué dentro del aviso
     setAlertPhoneStatus(result) {
         if (!this.alertState) return;
         this.alertState.status = result.status;
@@ -175,6 +200,7 @@ const UI = {
     // ---------- Panel de registro ----------
 
     openHistory() {
+        this.el.historySearch.value = '';
         this.renderHistory();
         this.el.historyPanel.hidden = false;
         document.body.style.overflow = 'hidden';
@@ -185,12 +211,28 @@ const UI = {
         document.body.style.overflow = '';
     },
 
+    // Dibuja la lista agrupada por día (lo más nuevo arriba), filtrada por la búsqueda de ID
     renderHistory() {
         const list = this.el.historyList;
         list.textContent = '';
 
-        const items = Records.items;
+        const query = this.el.historySearch.value.trim();
+        const items = Records.filter(query);
+        const total = Records.items.length;
+
+        this.el.historyEmpty.textContent = Lang.t(query ? 'emptySearch' : 'empty');
         this.el.historyEmpty.hidden = items.length > 0;
+
+        this.el.historyCount.hidden = total === 0;
+        this.el.historyCount.textContent = query
+            ? Lang.t('countFiltered').replace('{n}', items.length).replace('{m}', total)
+            : Lang.t('countAll').replace('{n}', total);
+
+        // Con una búsqueda activa, "Borrar" solo borra lo que se ve (así no se borra todo por error)
+        this.el.btnClear.textContent = query
+            ? Lang.t('clearFiltered').replace('{n}', items.length)
+            : Lang.t('clearAll');
+        this.el.btnClear.disabled = items.length === 0;
 
         const locale = Lang.current;
         let lastDay = '';
@@ -209,52 +251,72 @@ const UI = {
         }
     },
 
+    // Una fila: ID + hora arriba; SpO2 y BPM abajo, cada uno con el color de su semáforo
     buildRecordRow(r, d, locale) {
         const li = document.createElement('li');
         li.className = 'rec';
 
-        const dot = document.createElement('span');
-        dot.className = 'dot level-' + (r.spo2 != null ? Alerts.levelFor(r.spo2) : 'none');
+        const body = document.createElement('div');
+        body.className = 'rec-body';
+
+        const top = document.createElement('div');
+        top.className = 'rec-top';
+
+        const id = document.createElement('span');
+        id.className = 'rec-id';
+        id.textContent = r.pid ? 'ID ' + r.pid : Lang.t('noId');
 
         const time = document.createElement('span');
         time.className = 'rec-time';
         time.textContent = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
-        const vals = document.createElement('span');
-        vals.className = 'rec-vals';
-        // Incluimos el ID del paciente en la visualización del registro si existe
-        const idText = r.patientId ? ` [ID: ${r.patientId}]` : '';
-        vals.textContent = `${r.spo2 ?? '--'} % SpO2 · ${r.bpm ?? '--'} Bpm${idText}`;
-
-        li.append(dot, time, vals);
+        top.append(id, time);
 
         if (r.demo) {
             const tag = document.createElement('span');
             tag.className = 'tag';
             tag.textContent = Lang.t('demoTag');
-            li.append(tag);
+            top.append(tag);
         }
+
+        const vals = document.createElement('div');
+        vals.className = 'rec-vals';
+
+        const spo2 = document.createElement('span');
+        spo2.className = 'level-' + (r.spo2 != null ? Alerts.levelFor(r.spo2) : 'none');
+        spo2.textContent = `${r.spo2 ?? '--'} % SpO2`;
+
+        const bpm = document.createElement('span');
+        bpm.className = 'level-' + (r.bpm != null ? Alerts.levelForBpm(r.bpm) : 'none');
+        bpm.textContent = `${r.bpm ?? '--'} Bpm`;
+
+        vals.append(spo2, document.createTextNode(' · '), bpm);
+        body.append(top, vals);
 
         const del = document.createElement('button');
         del.className = 'icon-btn';
         del.textContent = '✕';
         del.dataset.del = r.id;
         del.setAttribute('aria-label', Lang.t('del'));
-        li.append(del);
 
+        li.append(body, del);
         return li;
     },
 
+    // Descarga como CSV lo que se está viendo (con búsqueda activa, solo ese ID)
     downloadCSV() {
-        if (!Records.items.length) {
+        const query = this.el.historySearch.value.trim();
+        const items = Records.filter(query);
+        if (!items.length) {
             this.toast(Lang.t('nothingToExport'));
             return;
         }
-        const blob = new Blob([Records.toCSV()], { type: 'text/csv;charset=utf-8' });
+        const suffix = query ? '_' + query.replace(/[^A-Za-z0-9._-]/g, '') : '';
+        const blob = new Blob([Records.toCSV(items)], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'registro_pulsoximetria.csv';
+        a.download = 'registro_pulsoximetria' + suffix + '.csv';
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -262,30 +324,40 @@ const UI = {
         this.toast(Lang.t('exported'));
     },
 
+    // ---------- Idioma ----------
+
+    // Repinta todos los textos según el idioma actual
     applyLang() {
         const t = k => Lang.t(k);
         this.el.title.textContent = t('title');
         this.el.btnSave.textContent = t('save');
         this.el.btnHistory.textContent = t('history');
         this.el.chartTitle.textContent = t('chart');
+
+        this.el.idTitle.textContent = t('idTitle');
+        this.el.idHelp.textContent = t('idHelp');
+        this.el.idInput.placeholder = t('idPlaceholder');
+        this.el.btnIdOk.textContent = t('idOk');
+        this.el.btnIdCancel.textContent = t('idCancel');
+        this.el.btnChangeId.setAttribute('aria-label', t('idChange'));
+        this.setPatient(this.patientId);
+
         this.el.historyTitle.textContent = t('historyTitle');
-        this.el.historyEmpty.textContent = t('empty');
+        this.el.historySearch.placeholder = t('searchPlaceholder');
+        this.el.historySearch.setAttribute('aria-label', t('searchPlaceholder'));
         this.el.btnExport.textContent = t('exportCsv');
-        this.el.btnClear.textContent = t('clearAll');
         this.el.btnCloseHistory.setAttribute('aria-label', t('close'));
         this.el.btnCloseAlert.setAttribute('aria-label', t('close'));
 
-        const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', borderline: 'scenBorderline', critical: 'scenCritical', severe: 'scenSevere' };
+        const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', critical: 'scenCritical' };
         this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
-            if (scenKeys[b.dataset.scenario]) {
-                b.title = t(scenKeys[b.dataset.scenario]);
-                b.setAttribute('aria-label', b.title);
-            }
+            b.title = t(scenKeys[b.dataset.scenario]);
+            b.setAttribute('aria-label', b.title);
         });
 
         this.renderConnectBtn();
         this.renderDemoBtn();
         this.renderAlert();
-        if (!this.el.historyPanel.hidden) this.renderHistory();
+        this.renderHistory();
     }
 };
