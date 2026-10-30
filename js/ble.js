@@ -22,6 +22,7 @@ const BLE = {
 
             await characteristic.startNotifications();
             UI.setConnState('connected');
+            App.resetReading(); // sesión nueva: no arrastrar valores de un demo o de una conexión anterior
 
             characteristic.addEventListener('characteristicvaluechanged', e => this.handleData(e));
         } catch (error) {
