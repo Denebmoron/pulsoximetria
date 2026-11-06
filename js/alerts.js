@@ -8,7 +8,7 @@ const Alerts = {
     // 91% a 94% -> Amarillo (Hipoxia leve)
     // >= 95% -> Verde (Normal)
     THRESH_SPO2: { 
-        severe: 86,   
+        severe: 88,   
         moderate: 91, 
         caution: 95   
     }, 
