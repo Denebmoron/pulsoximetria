@@ -15,7 +15,7 @@ const Alerts = {
         return 'green';                              // Normal
     },
 
-    check(spo2) {
+    check(spo2, bpm) { // Agregamos 'bpm' para poder enviarlo por WhatsApp
         // Actualiza el color del círculo de SpO2 en la interfaz según el nivel
         const level = this.levelFor(spo2);
         if (UI.el.spo2Circle) {
@@ -23,20 +23,17 @@ const Alerts = {
             UI.el.spo2Circle.classList.add('level-' + level);
         }
 
-        // Si el SpO2 está por debajo de 88, dispara también el banner de alerta superior
+        // Si el SpO2 está por debajo de 88, dispara el banner y la API de WhatsApp
         if (spo2 < 88) {
             UI.showAlert(spo2);
+            // Envía la alerta oficial por WhatsApp integrada con la API de Meta
+            if (typeof WhatsAppAPI !== 'undefined' && WhatsAppAPI.sendAlert) {
+                WhatsAppAPI.sendAlert(spo2, bpm, UI.patientId);
+            }
         } else {
             UI.hideAlert(); // Oculta la alerta si se recupera
         }
     },
-
-    // Registro del Service Worker para notificaciones móviles
-
-if (spo2 < 88) {
-    // Dispara tu alerta visual actual y además manda el WhatsApp
-    WhatsAppAPI.sendAlert(spo2, bpm, UI.patientId);
-}
 
     async registerWorker() {
         if ('serviceWorker' in navigator) {
