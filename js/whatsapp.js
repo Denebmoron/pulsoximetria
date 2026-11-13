@@ -1,14 +1,14 @@
 // js/whatsapp.js
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
-        // Token de acceso de tu captura de Meta
-        const token = "EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZC..."; // (Pega tu token completo aquí)
+        // Tu token de acceso temporal de Meta
+        const token = "EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZCwkR3IolgQ9ZAuETK4caqk1qfV1wXGkb6dUST6knXZBlFIR2MFs4kNQ8N5miRYqwKPfORlAXDz4f5xwDSUZA5pTVwzceQV9gZAQzhtS7Y0VZBaE3ZAZC2TcrSVjCJJxZCpZCPdVDZAzq9zxf7lkRlGtwH8iZB6uNfi4WNZBEfkMQMFNVdnbmE0tO2ZBbbuWYiAWbxxVsnYBm4LskKiUObnMgD8SAfo4PgZDZD";
         
-        // Phone Number ID exacto de tu captura
-        const phoneNumberId = "1426314113895859";[span_1](start_span)[span_1](end_span)
+        // El Phone Number ID de tu panel de Meta
+        const phoneNumberId = "1426314113895859"; //[span_1](start_span)[span_1](end_span)
         
-        // ¡CAMBIA ESTO! Pon aquí tu número personal verificado en Meta (ej: 573001234567 sin el símbolo +)
-        const recipientPhone = "573177581336"; 
+        // Tu número personal verificado en la lista de destinatarios de Meta (solo números, con código de país)
+        const recipientPhone = "573177581336"; // Reemplaza por tu número exacto registrado en Meta
 
         const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
 
@@ -32,9 +32,9 @@ const WhatsAppAPI = {
             });
             
             const result = await response.json();
-            console.log("Alerta de WhatsApp enviada:", result);
+            console.log("Respuesta de la API de Meta:", result);
         } catch (error) {
-            console.error("Error al enviar WhatsApp:", error);
+            console.error("Error de red al enviar WhatsApp:", error);
         }
     }
 };
