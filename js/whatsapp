@@ -2,7 +2,9 @@
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
         const token = "TU_TOKEN_TEMPORAL_DE_META";
-        const phoneNumberId = "TU_PHONE_NUMBER_ID"; 
+        const phoneNumberId = EAGXq8PPKX7YBS8BOb7PwX3ZBgBVF8XcuJIaZCuAXZCGYl15jZCvNEdibAQGwgwk4eNUgtaSHZC0HrdNkxw0iUjRbfOWv44bBzRKVAcEDxD0ZBtqK11SZBCoUZBGuk1ZAXgmufHrObLJQ0V05MjYPwwCesIBWSuxdNTlZCcQxajZALOxpooNDZARNucOTtXdOrtfRqXYQFxk53vZBOboY02ZA1w6J2TpjCjPht0s28zorTdrwstyMEt2dZBnrXaHmgZDZD
+
+ "TU_PHONE_NUMBER_ID"; 
         const recipientPhone = "573001234567"; // Número verificado en tu panel de Meta
 
         const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
