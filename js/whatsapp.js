@@ -1,9 +1,14 @@
 // js/whatsapp.js
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
-        const token = "EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZCwkR3IolgQ9ZAuETK4caqk1qfV1wXGkb6dUST6knXZBlFIR2MFs4kNQ8N5miRYqwKPfORlAXDz4f5xwDSUZA5pTVwzceQV9gZAQzhtS7Y0VZBaE3ZAZC2TcrSVjCJJxZCpZCPdVDZAzq9zxf7lkRlGtwH8iZB6uNfi4WNZBEfkMQMFNVdnbmE0tO2ZBbbuWYiAWbxxVsnYBm4LskKiUObnMgD8SAfo4PgZDZD";
-        const phoneNumberId = "1426314113895859";
-        const recipientPhone = "15551636388";
+        // Token de acceso de tu captura de Meta
+        const token = "EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZC..."; // (Pega tu token completo aquí)
+        
+        // Phone Number ID exacto de tu captura
+        const phoneNumberId = "1426314113895859";[span_1](start_span)[span_1](end_span)
+        
+        // ¡CAMBIA ESTO! Pon aquí tu número personal verificado en Meta (ej: 573001234567 sin el símbolo +)
+        const recipientPhone = "573177581336"; 
 
         const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
 
