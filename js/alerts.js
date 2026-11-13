@@ -32,6 +32,12 @@ const Alerts = {
     },
 
     // Registro del Service Worker para notificaciones móviles
+
+if (spo2 < 88) {
+    // Dispara tu alerta visual actual y además manda el WhatsApp
+    WhatsAppAPI.sendAlert(spo2, bpm, UI.patientId);
+}
+
     async registerWorker() {
         if ('serviceWorker' in navigator) {
             try {
