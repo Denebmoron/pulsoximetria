@@ -1,10 +1,11 @@
 // js/whatsapp.js
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
-        const token = "TU_TOKEN_TEMPORAL_DE_META";
-        const phoneNumberId = EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZCwkR3IolgQ9ZAuETK4caqk1qfV1wXGkb6dUST6knXZBlFIR2MFs4kNQ8N5miRYqwKPfORlAXDz4f5xwDSUZA5pTVwzceQV9gZAQzhtS7Y0VZBaE3ZAZC2TcrSVjCJJxZCpZCPdVDZAzq9zxf7lkRlGtwH8iZB6uNfi4WNZBEfkMQMFNVdnbmE0tO2ZBbbuWYiAWbxxVsnYBm4LskKiUObnMgD8SAfo4PgZDZD
+        const token = EAGXq8PPKX7YBSzTVS22IETKDpVtP1GZCwkR3IolgQ9ZAuETK4caqk1qfV1wXGkb6dUST6knXZBlFIR2MFs4kNQ8N5miRYqwKPfORlAXDz4f5xwDSUZA5pTVwzceQV9gZAQzhtS7Y0VZBaE3ZAZC2TcrSVjCJJxZCpZCPdVDZAzq9zxf7lkRlGtwH8iZB6uNfi4WNZBEfkMQMFNVdnbmE0tO2ZBbbuWYiAWbxxVsnYBm4LskKiUObnMgD8SAfo4PgZDZD "TU_TOKEN_TEMPORAL_DE_META";
+      
+  const phoneNumberId =1426314113895859
+ "TU_PHONE_NUMBER_ID";
 
- "TU_PHONE_NUMBER_ID"; 1426314113895859
         const recipientPhone = "+1555163-6388"; // Número verificado en tu panel de Meta
 
         const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
