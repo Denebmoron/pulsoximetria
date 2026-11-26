@@ -1,9 +1,10 @@
-// ===== Accesibilidad: lee pantalla, identificación, SpO2, BPM, foco y cada 10 s =====
+// ===== Accesibilidad: lee pantalla, identificación, SpO2, BPM, foco y repite alertas de ambos signos =====
 const Access = {
     on: false,
 
     PERIODIC_MS: 10000,   // Lectura periódica cada 10 segundos cuando está activo
-    RED_REPEAT_MS: 10000, // Repetición de alerta crítica cada 10 segundos
+    RED_REPEAT_MS: 10000, // Cada cuánto repetir alertas críticas (SpO2 y/o BPM)
+    RED_MAX_REPEATS: 6,   // Máximo de repeticiones seguidas por evento crítico (pon Infinity si quieres sin límite)
 
     SKIP: '.demo-trigger, .scen, #btnA11y',
 
@@ -11,8 +12,8 @@ const Access = {
     STATUS_SELECTOR: '#connectionStatus, #bleStatus, .status-text',
 
     st: {
-        spo2: { val: null, level: null, lastRed: 0 },
-        bpm:  { val: null, level: null, lastRed: 0 },
+        spo2: { val: null, level: null, lastRed: 0, redCount: 0 },
+        bpm:  { val: null, level: null, lastRed: 0, redCount: 0 },
         lastPeriodic: 0
     },
 
@@ -62,10 +63,17 @@ const Access = {
 
     speak(text, interrupt = true) {
         if (!('speechSynthesis' in window) || !text) return;
-        if (interrupt) speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = this.t().lang;
-        speechSynthesis.speak(u);
+        try {
+            if (speechSynthesis.paused) speechSynthesis.resume();
+            if (interrupt) speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = this.t().lang;
+            u.rate = 1.0;
+            u.volume = 1.0;
+            speechSynthesis.speak(u);
+        } catch (err) {
+            console.warn('[Access speak error]:', err);
+        }
     },
 
     label(el) {
@@ -216,16 +224,23 @@ const Access = {
             }
         }
 
-        this.speak(parts.filter(Boolean).join('. '));
+        this.speak(parts.filter(Boolean).join('. '), true);
     },
 
     periodicTick() {
         const now = Date.now();
+        const t = this.t();
+        const criticalAlerts = [];
 
-        for (const kind of ['spo2', 'bpm']) {
-            const stKind = this.st[kind];
-            const el = document.querySelector(kind === 'spo2' ? '.spo2-circle' : '.bpm-card');
-            const val = kind === 'spo2' ? this.spo2Number() : this.bpmNumber();
+        const checks = [
+            { kind: 'spo2', sel: '.spo2-circle', getVal: () => this.spo2Number() },
+            { kind: 'bpm',  sel: '.bpm-card',   getVal: () => this.bpmNumber() }
+        ];
+
+        for (const item of checks) {
+            const stKind = this.st[item.kind];
+            const el = document.querySelector(item.sel) || this.$(item.kind + 'Value');
+            const val = item.getVal();
             const level = this.levelOf(el);
             const prevLevel = stKind.level;
 
@@ -233,21 +248,38 @@ const Access = {
             stKind.level = level;
 
             if (val && level === 'red') {
-                if (prevLevel !== 'red' || now - stKind.lastRed >= this.RED_REPEAT_MS) {
+                // Reinicia el contador de repeticiones si acaba de entrar en rojo
+                if (prevLevel !== 'red') {
+                    stKind.redCount = 0;
+                    stKind.lastRed = 0;
+                }
+
+                const canRepeat = stKind.redCount < this.RED_MAX_REPEATS;
+                const timeReady = stKind.lastRed === 0 || (now - stKind.lastRed >= this.RED_REPEAT_MS);
+
+                if (canRepeat && timeReady) {
                     stKind.lastRed = now;
-                    this.speak(`${this.t().critical} ${this.phrase(kind, val, 'red')}`);
-                    return;
+                    stKind.redCount += 1;
+                    criticalAlerts.push(this.phrase(item.kind, val, 'red'));
                 }
             } else {
                 stKind.lastRed = 0;
+                stKind.redCount = 0;
             }
         }
 
+        // Si hay alertas críticas en SpO2 y/o BPM, se anuncian juntas sin cortar ninguna
+        if (criticalAlerts.length > 0) {
+            this.speak(`${t.critical} ${criticalAlerts.join('. ')}.`, false);
+            return;
+        }
+
+        // Lectura periódica normal cada 10 s cuando el modo está encendido
         if (!this.on) return;
         if (now - this.st.lastPeriodic >= this.PERIODIC_MS) {
             this.st.lastPeriodic = now;
             const summary = `${this.getIdentification()}. ${this.buildVitalsSummary()}`;
-            this.speak(summary);
+            this.speak(summary, false);
         }
     },
 
@@ -261,11 +293,11 @@ const Access = {
 
         if (this.on) {
             this.st.lastPeriodic = Date.now();
-            this.speak(this.t().on);
+            this.speak(this.t().on, true);
             setTimeout(() => this.readScreen(true), 800);
         } else {
-            speechSynthesis.cancel();
-            this.speak(this.t().off);
+            if ('speechSynthesis' in window) speechSynthesis.cancel();
+            this.speak(this.t().off, true);
         }
     },
 
@@ -276,7 +308,7 @@ const Access = {
         document.addEventListener('focusin', e => {
             const el = e.target;
             if (!this.on || !el.matches('button, input, select') || el.matches(this.SKIP)) return;
-            this.speak(this.label(el));
+            this.speak(this.label(el), true);
         });
 
         setInterval(() => this.periodicTick(), 2000);
