@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulsoximetría Mark II</title>
-    <link rel="stylesheet" href="css/styles.css?v=8">
+    <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
@@ -40,14 +40,18 @@
         window.__diag = { show: show, failed: failed };
     })();
     </script>
-    
-    <div class="header-tools">
-        <button class="a11y-btn" id="btnA11y" aria-pressed="false" aria-label="Accesibilidad">♿</button>
-            <select class="lang-select" id="langSelect" aria-label="Idioma">
-                <option value="es">Español</option>
-                <option value="en">English</option>
-            </select>
-    </div>
+
+    <div class="main-container">
+        <div class="header">
+            <h1 id="title">Revisa tu pulsoximetría</h1>
+            <div class="header-tools">
+                <button class="a11y-btn" id="btnA11y" aria-pressed="false" aria-label="Accesibilidad">♿</button>
+                <select class="lang-select" id="langSelect" aria-label="Idioma">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
 
         <button class="id-chip" id="btnChangeId" aria-label="Cambiar ID">ID: --</button>
 
@@ -142,8 +146,8 @@
     <script src="js/ble.js?v=8"></script>
     <script src="js/demo.js?v=10"></script>
     <script src="js/main.js?v=11"></script>
-    <script src="js/accesibilidad.js?v=1"></script>
     <script src="js/whatsapp.js?v=1"></script>
+    <script src="js/accesibilidad.js?v=1"></script>
 
     <script>
     // Revisión final: si un archivo cargó pero no define lo que debe, probablemente es el archivo equivocado
@@ -153,7 +157,8 @@
         var checks = {
             'js/i18n.js': typeof Lang, 'js/graph.js': typeof Graph, 'js/alerts.js': typeof Alerts,
             'js/records.js': typeof Records, 'js/ui.js': typeof UI, 'js/ble.js': typeof BLE,
-            'js/demo.js': typeof Demo, 'js/main.js': typeof App
+            'js/demo.js': typeof Demo, 'js/main.js': typeof App,
+            'js/accesibilidad.js': typeof Access
         };
         for (var f in checks) {
             if (checks[f] === 'undefined' && !d.failed[f]) {
