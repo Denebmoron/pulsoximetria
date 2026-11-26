@@ -51,6 +51,20 @@ const UI = {
             btnCloseAlert: $('btnCloseAlert'),
             btnEnableNotif: $('btnEnableNotif')
         };
+
+        // Aviso claro si falta algún elemento en el index.html (en vez de romper en silencio)
+        const missing = Object.keys(this.el).filter(k => !this.el[k]);
+        if (missing.length && window.__diag) {
+            window.__diag.show('Faltan elementos en index.html: ' + missing.join(', '));
+        }
+    },
+
+    // Ayudantes que no se rompen si un elemento no existe
+    setText(el, value) {
+        if (el) el.textContent = value;
+    },
+    setAttr(el, name, value) {
+        if (el) el.setAttribute(name, value);
     },
 
     // ---------- Lectura en vivo ----------
@@ -66,7 +80,7 @@ const UI = {
     showReading(bpm, spo2) {
         if (bpm > 0) {
             this.el.bpm.textContent = bpm;
-            this.setLevel(this.el.bpmCard, Alerts.levelForBpm(bpm)); 
+            this.setLevel(this.el.bpmCard, Alerts.levelForBpm(bpm));
         }
 
         if (Number.isFinite(spo2) && spo2 > 0) {
@@ -91,7 +105,7 @@ const UI = {
 
     setPatient(id) {
         this.patientId = id;
-        this.el.btnChangeId.textContent = Lang.t('idChip').replace('{id}', id || '--');
+        this.setText(this.el.btnChangeId, Lang.t('idChip').replace('{id}', id || '--'));
     },
 
     openIdPrompt({ canCancel = false, value = '' } = {}) {
@@ -134,11 +148,14 @@ const UI = {
 
     renderConnectBtn() {
         const keys = { idle: 'connect', connecting: 'connecting', connected: 'connected', error: 'error' };
-        this.el.btnConnect.textContent = Lang.t(keys[this.connState]);
-        this.el.btnConnect.style.backgroundColor = this.connState === 'connected' ? '#00FF00' : '';
+        this.setText(this.el.btnConnect, Lang.t(keys[this.connState]));
+        if (this.el.btnConnect) {
+            this.el.btnConnect.style.backgroundColor = this.connState === 'connected' ? '#00FF00' : '';
+        }
     },
 
     renderDemoBtn() {
+        if (!this.el.btnDemo) return;
         const label = Lang.t(this.demoOn ? 'stopDemo' : 'startDemo');
         this.el.btnDemo.classList.toggle('active', this.demoOn);
         this.el.btnDemo.title = label;
@@ -149,6 +166,7 @@ const UI = {
 
     toast(message) {
         const t = this.el.toast;
+        if (!t) return;
         t.textContent = message;
         t.classList.add('show');
         clearTimeout(this.toastTimer);
@@ -172,23 +190,25 @@ const UI = {
 
     hideAlert() {
         this.alertState = null;
-        this.el.alertBanner.hidden = true;
+        if (this.el.alertBanner) this.el.alertBanner.hidden = true;
     },
 
     renderAlert() {
         const s = this.alertState;
         if (!s) return;
 
-        this.el.alertTitle.textContent = Lang.t('alertTitle');
-        this.el.alertText.textContent = Lang.t('alertBody').replace('{n}', s.spo2);
+        this.setText(this.el.alertTitle, Lang.t('alertTitle'));
+        this.setText(this.el.alertText, Lang.t('alertBody').replace('{n}', s.spo2));
 
         const hints = { unsupported: 'notifUnsupported', denied: 'notifBlocked', default: 'notifDefault', noworker: 'notifNoWorker', error: 'notifError' };
         const key = hints[s.status];
-        this.el.alertHint.hidden = !key;
-        if (key) this.el.alertHintText.textContent = Lang.t(key) + (s.detail ? ' (' + s.detail + ')' : '');
+        if (this.el.alertHint) this.el.alertHint.hidden = !key;
+        if (key) this.setText(this.el.alertHintText, Lang.t(key) + (s.detail ? ' (' + s.detail + ')' : ''));
 
-        this.el.btnEnableNotif.hidden = s.status !== 'default';
-        this.el.btnEnableNotif.textContent = Lang.t('enableNotif');
+        if (this.el.btnEnableNotif) {
+            this.el.btnEnableNotif.hidden = s.status !== 'default';
+            this.el.btnEnableNotif.textContent = Lang.t('enableNotif');
+        }
     },
 
     // ---------- Panel de registro ----------
@@ -207,24 +227,29 @@ const UI = {
 
     renderHistory() {
         const list = this.el.historyList;
+        if (!list || !this.el.historySearch) return;
         list.textContent = '';
 
         const query = this.el.historySearch.value.trim();
         const items = Records.filter(query);
         const total = Records.items.length;
 
-        this.el.historyEmpty.textContent = Lang.t(query ? 'emptySearch' : 'empty');
-        this.el.historyEmpty.hidden = items.length > 0;
+        this.setText(this.el.historyEmpty, Lang.t(query ? 'emptySearch' : 'empty'));
+        if (this.el.historyEmpty) this.el.historyEmpty.hidden = items.length > 0;
 
-        this.el.historyCount.hidden = total === 0;
-        this.el.historyCount.textContent = query
-            ? Lang.t('countFiltered').replace('{n}', items.length).replace('{m}', total)
-            : Lang.t('countAll').replace('{n}', total);
+        if (this.el.historyCount) {
+            this.el.historyCount.hidden = total === 0;
+            this.el.historyCount.textContent = query
+                ? Lang.t('countFiltered').replace('{n}', items.length).replace('{m}', total)
+                : Lang.t('countAll').replace('{n}', total);
+        }
 
-        this.el.btnClear.textContent = query
-            ? Lang.t('clearFiltered').replace('{n}', items.length)
-            : Lang.t('clearAll');
-        this.el.btnClear.disabled = items.length === 0;
+        if (this.el.btnClear) {
+            this.el.btnClear.textContent = query
+                ? Lang.t('clearFiltered').replace('{n}', items.length)
+                : Lang.t('clearAll');
+            this.el.btnClear.disabled = items.length === 0;
+        }
 
         const locale = Lang.current;
         let lastDay = '';
@@ -316,31 +341,34 @@ const UI = {
 
     applyLang() {
         const t = k => Lang.t(k);
-        this.el.title.textContent = t('title');
-        this.el.btnSave.textContent = t('save');
-        this.el.btnHistory.textContent = t('history');
-        this.el.chartTitle.textContent = t('chart');
 
-        this.el.idTitle.textContent = t('idTitle');
-        this.el.idHelp.textContent = t('idHelp');
-        this.el.idInput.placeholder = t('idPlaceholder');
-        this.el.btnIdOk.textContent = t('idOk');
-        this.el.btnIdCancel.textContent = t('idCancel');
-        this.el.btnChangeId.setAttribute('aria-label', t('idChange'));
+        this.setText(this.el.title, t('title'));
+        this.setText(this.el.btnSave, t('save'));
+        this.setText(this.el.btnHistory, t('history'));
+        this.setText(this.el.chartTitle, t('chart'));
+
+        this.setText(this.el.idTitle, t('idTitle'));
+        this.setText(this.el.idHelp, t('idHelp'));
+        if (this.el.idInput) this.el.idInput.placeholder = t('idPlaceholder');
+        this.setText(this.el.btnIdOk, t('idOk'));
+        this.setText(this.el.btnIdCancel, t('idCancel'));
+        this.setAttr(this.el.btnChangeId, 'aria-label', t('idChange'));
         this.setPatient(this.patientId);
 
-        this.el.historyTitle.textContent = t('historyTitle');
-        this.el.historySearch.placeholder = t('searchPlaceholder');
-        this.el.historySearch.setAttribute('aria-label', t('searchPlaceholder'));
-        this.el.btnExport.textContent = t('exportCsv');
-        this.el.btnCloseHistory.setAttribute('aria-label', t('close'));
-        this.el.btnCloseAlert.setAttribute('aria-label', t('close'));
+        this.setText(this.el.historyTitle, t('historyTitle'));
+        if (this.el.historySearch) this.el.historySearch.placeholder = t('searchPlaceholder');
+        this.setAttr(this.el.historySearch, 'aria-label', t('searchPlaceholder'));
+        this.setText(this.el.btnExport, t('exportCsv'));
+        this.setAttr(this.el.btnCloseHistory, 'aria-label', t('close'));
+        this.setAttr(this.el.btnCloseAlert, 'aria-label', t('close'));
 
         const scenKeys = { normal: 'scenNormal', caution: 'scenCaution', critical: 'scenCritical' };
-        this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
-            b.title = t(scenKeys[b.dataset.scenario]);
-            b.setAttribute('aria-label', b.title);
-        });
+        if (this.el.scenarios) {
+            this.el.scenarios.querySelectorAll('[data-scenario]').forEach(b => {
+                b.title = t(scenKeys[b.dataset.scenario]);
+                b.setAttribute('aria-label', b.title);
+            });
+        }
 
         this.renderConnectBtn();
         this.renderDemoBtn();
