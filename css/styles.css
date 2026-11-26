@@ -198,20 +198,20 @@ canvas {
     padding: 12px 14px;
     animation: alert-pulse 1.4s ease-in-out infinite;
 }
-.alert-main { 
-    display: flex; 
-    flex-direction: column; 
-    align-items: flex-start; 
-    gap: 4px; 
+.alert-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     width: 100%;
 }
-.alert-main strong { 
+.alert-main strong {
     font-size: 0.95rem;
     margin-bottom: 2px;
     display: block;
 }
-.alert-main span { 
-    font-size: 0.9rem; 
+.alert-main span {
+    font-size: 0.9rem;
     opacity: 0.95;
     display: block;
 }
@@ -268,3 +268,13 @@ canvas {
 }
 .history-search:focus { outline: 2px solid var(--cyan); border-color: transparent; }
 .history-count { font-size: .8rem; opacity: .6; margin: 0 0 4px; }
+
+/* ===== Accesibilidad ===== */
+.header-tools { display: flex; gap: 8px; align-items: center; }
+.a11y-btn {
+    background: #222; color: #fff;
+    border: 1px solid rgba(255,255,255,.25); border-radius: 5px;
+    padding: 5px 10px; font-size: 1rem; cursor: pointer;
+}
+.a11y-btn.on { background: var(--cyan); color: #000; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
