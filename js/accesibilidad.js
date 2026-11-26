@@ -1,13 +1,12 @@
-// ===== Accesibilidad: lee la pantalla, identificación, botones con foco y lectura cada 30 s =====
+// ===== Accesibilidad: lee pantalla, identificación, SpO2, BPM, foco y cada 10 s =====
 const Access = {
     on: false,
 
-    PERIODIC_MS: 30000,   // Lectura periódica completa cada 30 segundos cuando está activo
-    RED_REPEAT_MS: 30000, // Repetición de alerta crítica cada 30 segundos
+    PERIODIC_MS: 10000,   // Lectura periódica cada 10 segundos cuando está activo
+    RED_REPEAT_MS: 10000, // Repetición de alerta crítica cada 10 segundos
 
     SKIP: '.demo-trigger, .scen, #btnA11y',
 
-    // Posibles IDs/clases para identificación de paciente/dispositivo y estado
     ID_SELECTORS: ['#patientId', '#patient-id', '#idValue', '#deviceId', '[data-patient-id]'],
     STATUS_SELECTOR: '#connectionStatus, #bleStatus, .status-text',
 
@@ -20,7 +19,7 @@ const Access = {
     T: {
         es: {
             lang: 'es-ES',
-            on: 'Accesibilidad activada. Lectura cada 30 segundos.',
+            on: 'Accesibilidad activada. Lectura cada 10 segundos.',
             off: 'Accesibilidad desactivada.',
             idLabel: 'Identificación',
             noId: 'sin identificación',
@@ -36,7 +35,7 @@ const Access = {
         },
         en: {
             lang: 'en-US',
-            on: 'Accessibility on. Reading every 30 seconds.',
+            on: 'Accessibility on. Reading every 10 seconds.',
             off: 'Accessibility off.',
             idLabel: 'Identification',
             noId: 'no ID',
@@ -87,8 +86,6 @@ const Access = {
             .filter(Boolean);
     },
 
-    // ---------- Identificación y estado ----------
-
     getIdentification() {
         const t = this.t();
         for (const sel of this.ID_SELECTORS) {
@@ -120,21 +117,24 @@ const Access = {
         return txt ? `${t.statusLabel}: ${txt}` : '';
     },
 
-    // ---------- Lecturas de SpO2 y BPM ----------
-
     spo2Number() {
         const el = this.$('spo2Value');
         if (!el) return null;
-        const m = (el.textContent || '').match(/\d+/);
-        return m ? parseInt(m[0], 10) : null;
+        const raw = (el.textContent || el.value || '').replace(',', '.').trim();
+        const m = raw.match(/\d+(?:\.\d+)?/);
+        if (!m) return null;
+        const n = parseFloat(m[0]);
+        return (n > 0 && n <= 100) ? Math.round(n) : null;
     },
 
     bpmNumber() {
         const el = this.$('bpmValue');
         if (!el) return null;
-        const m = (el.textContent || '').match(/\d+/);
-        const n = m ? parseInt(m[0], 10) : NaN;
-        return n > 0 ? n : null;
+        const raw = (el.textContent || el.value || '').replace(',', '.').trim();
+        const m = raw.match(/\d+(?:\.\d+)?/);
+        if (!m) return null;
+        const n = parseFloat(m[0]);
+        return n > 0 ? Math.round(n) : null;
     },
 
     levelOf(el) {
@@ -164,16 +164,19 @@ const Access = {
         const t = this.t();
         const s = this.spo2Number();
         const b = this.bpmNumber();
+        const spo2El = document.querySelector('.spo2-circle') || this.$('spo2Value');
+        const bpmEl = document.querySelector('.bpm-card') || this.$('bpmValue');
+
         const spo2Text = s != null
-            ? this.phrase('spo2', s, this.levelOf(document.querySelector('.spo2-circle') || this.$('spo2Value')))
+            ? this.phrase('spo2', s, this.levelOf(spo2El))
             : `${t.spo2} ${t.none}`;
+
         const bpmText = b != null
-            ? this.phrase('bpm', b, this.levelOf(document.querySelector('.bpm-card') || this.$('bpmValue')))
+            ? this.phrase('bpm', b, this.levelOf(bpmEl))
             : `${t.bpm} ${t.none}`;
+
         return `${spo2Text}. ${bpmText}`;
     },
-
-    // ---------- Lectura completa y lectura periódica cada 30 s ----------
 
     readScreen(includeButtons = true) {
         const t = this.t();
@@ -219,7 +222,6 @@ const Access = {
     periodicTick() {
         const now = Date.now();
 
-        // Actualiza estados de SpO2 y BPM y avisa si entran en nivel crítico (incluso con voz apagada)
         for (const kind of ['spo2', 'bpm']) {
             const stKind = this.st[kind];
             const el = document.querySelector(kind === 'spo2' ? '.spo2-circle' : '.bpm-card');
@@ -241,7 +243,6 @@ const Access = {
             }
         }
 
-        // Si el modo accesibilidad está encendido, lee identificación y valores cada 30 s
         if (!this.on) return;
         if (now - this.st.lastPeriodic >= this.PERIODIC_MS) {
             this.st.lastPeriodic = now;
@@ -261,7 +262,7 @@ const Access = {
         if (this.on) {
             this.st.lastPeriodic = Date.now();
             this.speak(this.t().on);
-            setTimeout(() => this.readScreen(true), 900);
+            setTimeout(() => this.readScreen(true), 800);
         } else {
             speechSynthesis.cancel();
             this.speak(this.t().off);
@@ -278,8 +279,7 @@ const Access = {
             this.speak(this.label(el));
         });
 
-        // Revisa cada 5 s para alertas críticas en rojo y cada 30 s para lectura periódica
-        setInterval(() => this.periodicTick(), 5000);
+        setInterval(() => this.periodicTick(), 2000);
     }
 };
 
