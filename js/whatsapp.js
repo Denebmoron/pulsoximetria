@@ -1,7 +1,7 @@
 // js/whatsapp.js
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
-        const workerUrl = "pulsoximetria.sofia-paezhot.workers.dev/";
+        const workerUrl = "https://pulsoximetria.sofia-paezhot.workers.dev/";
 
         try {
             const response = await fetch(workerUrl, {
