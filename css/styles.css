@@ -182,3 +182,13 @@ canvas {
 .scen-green  { background: #00e676; color: #00e676; }
 .scen-yellow { background: #ffea00; color: #ffea00; }
 .scen-red    { background: #ff1744; color: #ff1744; }
+
+/* ===== Accesibilidad ===== */
+.header-tools { display: flex; gap: 8px; align-items: center; }
+.a11y-btn {
+    background: #222; color: #fff;
+    border: 1px solid rgba(255,255,255,.25); border-radius: 5px;
+    padding: 5px 10px; font-size: 1rem; cursor: pointer;
+}
+.a11y-btn.on { background: var(--cyan); color: #000; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
