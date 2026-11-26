@@ -1,171 +1,286 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pulsoximetría Mark II</title>
-    <link rel="stylesheet" href="css/styles.css?v=9">
-</head>
-<body>
+// ===== Accesibilidad: lee pantalla, identificación, SpO2, BPM, foco y cada 10 s =====
+const Access = {
+    on: false,
 
-    <!-- Diagnóstico: si algo falla al cargar o ejecutarse, lo muestra aquí (sirve en el celular, sin consola).
-         Toca el aviso para cerrarlo. -->
-    <div id="diag" hidden style="position:fixed;top:0;left:0;right:0;z-index:30;background:#b00020;color:#fff;font:13px/1.35 system-ui,sans-serif;padding:6px 12px;cursor:pointer"></div>
-    <script>
-    (function () {
-        var box = document.getElementById('diag');
-        var shown = {};
-        var failed = {};
-        function show(msg) {
-            if (shown[msg]) return;
-            shown[msg] = true;
-            var p = document.createElement('p');
-            p.style.margin = '4px 0';
-            p.textContent = msg;
-            box.appendChild(p);
-            box.hidden = false;
+    PERIODIC_MS: 10000,   // Lectura periódica cada 10 segundos cuando está activo
+    RED_REPEAT_MS: 10000, // Repetición de alerta crítica cada 10 segundos
+
+    SKIP: '.demo-trigger, .scen, #btnA11y',
+
+    ID_SELECTORS: ['#patientId', '#patient-id', '#idValue', '#deviceId', '[data-patient-id]'],
+    STATUS_SELECTOR: '#connectionStatus, #bleStatus, .status-text',
+
+    st: {
+        spo2: { val: null, level: null, lastRed: 0 },
+        bpm:  { val: null, level: null, lastRed: 0 },
+        lastPeriodic: 0
+    },
+
+    T: {
+        es: {
+            lang: 'es-ES',
+            on: 'Accesibilidad activada. Lectura cada 10 segundos.',
+            off: 'Accesibilidad desactivada.',
+            idLabel: 'Identificación',
+            noId: 'sin identificación',
+            statusLabel: 'Estado',
+            spo2: 'Oxígeno',
+            bpm: 'Pulso',
+            pct: 'por ciento',
+            unit: 'latidos por minuto',
+            buttons: 'Botones',
+            critical: 'Alerta crítica.',
+            none: 'sin lectura',
+            level: { green: 'normal', yellow: 'precaución', red: 'crítico' }
+        },
+        en: {
+            lang: 'en-US',
+            on: 'Accessibility on. Reading every 10 seconds.',
+            off: 'Accessibility off.',
+            idLabel: 'Identification',
+            noId: 'no ID',
+            statusLabel: 'Status',
+            spo2: 'Oxygen',
+            bpm: 'Pulse',
+            pct: 'percent',
+            unit: 'beats per minute',
+            buttons: 'Buttons',
+            critical: 'Critical alert.',
+            none: 'no reading',
+            level: { green: 'normal', yellow: 'caution', red: 'critical' }
         }
-        // En fase de captura para detectar también archivos que no se pudieron descargar (404)
-        window.addEventListener('error', function (e) {
-            var t = e.target;
-            if (t && t.tagName === 'SCRIPT' && t.getAttribute('src')) {
-                failed[t.getAttribute('src').split('?')[0]] = true;
-                show('No se pudo cargar ' + t.getAttribute('src').split('?')[0] + ' (revisa que esté subido en esa ruta del repositorio)');
-            } else if (e.message) {
-                var file = (e.filename || '').split('/').pop().split('?')[0];
-                show('Error: ' + e.message + (file ? ' (' + file + ':' + e.lineno + ')' : ''));
-            }
-        }, true);
-        box.addEventListener('click', function () { box.hidden = true; });
-        window.__diag = { show: show, failed: failed };
-    })();
-    </script>
+    },
 
-    <div class="main-container">
-        <div class="header">
-            <h1 id="title">Revisa tu pulsoximetría</h1>
-            <div class="header-tools">
-                <button class="a11y-btn" id="btnA11y" aria-pressed="false" aria-label="Accesibilidad">♿</button>
-                <select class="lang-select" id="langSelect" aria-label="Idioma">
-                    <option value="es">Español</option>
-                    <option value="en">English</option>
-                </select>
-            </div>
-        </div>
+    t() {
+        const l = (typeof Lang !== 'undefined' && Lang.current) || 'es';
+        return this.T[l] || this.T.es;
+    },
 
-        <button class="id-chip" id="btnChangeId" aria-label="Cambiar ID">ID: --</button>
+    $(id) {
+        return document.getElementById(id);
+    },
 
-        <button class="btn-cyan" id="btnConnect">Conectar</button>
+    speak(text, interrupt = true) {
+        if (!('speechSynthesis' in window) || !text) return;
+        if (interrupt) speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = this.t().lang;
+        speechSynthesis.speak(u);
+    },
 
-        <div class="spo2-circle">
-            <div class="spo2-circle-inner">
-                <span id="spo2Value">-- % SpO2</span>
-            </div>
-        </div>
+    label(el) {
+        if (!el) return '';
+        return (
+            el.getAttribute('aria-label') ||
+            el.title ||
+            el.placeholder ||
+            (el.textContent || '').replace(/\s+/g, ' ').trim()
+        );
+    },
 
-        <div class="bpm-card">
-            <div class="heart-icon">❤️</div>
-            <div class="bpm-value"><span id="bpmValue">0</span> Bpm</div>
-        </div>
+    visibleButtons(root) {
+        if (!root) return [];
+        return [...root.querySelectorAll('button')]
+            .filter(b => !b.hidden && b.getClientRects().length && !b.matches(this.SKIP))
+            .map(b => this.label(b))
+            .filter(Boolean);
+    },
 
-        <div class="btn-row">
-            <button class="btn-cyan" id="btnSave">Guardar</button>
-            <button class="btn-cyan" id="btnHistory">Ver registro</button>
-        </div>
-
-        <div class="chart-section">
-            <h3 id="chartTitle">Curva pletismográfica de la señal</h3>
-            <canvas id="plethCanvas" width="400" height="120"></canvas>
-        </div>
-    </div>
-
-    <!-- Ventana de identificación: se abre al ingresar y al tocar la etiqueta "ID: ..." -->
-    <section class="id-panel" id="idPanel" role="dialog" aria-modal="true" aria-labelledby="idTitle" hidden>
-        <div class="id-card">
-            <h2 id="idTitle">Identificación</h2>
-            <p id="idHelp">Ingresa tu número de identificación para empezar. Se guarda con cada lectura.</p>
-            <input id="idInput" type="text" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Número de identificación" aria-label="ID">
-            <p class="id-error" id="idError" hidden></p>
-            <div class="id-actions">
-                <button class="btn-ghost" id="btnIdCancel" hidden>Cancelar</button>
-                <button class="btn-cyan" id="btnIdOk">Continuar</button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Panel de registro (se abre con "Ver registro") -->
-    <section class="history-panel" id="historyPanel" hidden aria-label="Registro">
-        <div class="history-inner">
-            <div class="history-header">
-                <h2 id="historyTitle">Registro</h2>
-                <button class="icon-btn" id="btnCloseHistory" aria-label="Cerrar">✕</button>
-            </div>
-            <input class="history-search" id="historySearch" type="search" placeholder="Buscar por ID" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Buscar por ID">
-            <p class="history-count" id="historyCount" hidden></p>
-            <ul class="history-list" id="historyList"></ul>
-            <p class="history-empty" id="historyEmpty">Aún no hay lecturas guardadas.</p>
-            <div class="history-actions">
-                <button class="btn-ghost" id="btnExport">Exportar CSV</button>
-                <button class="btn-ghost btn-danger" id="btnClear">Borrar todo</button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Aviso de alerta en pantalla: sale siempre que el SpO2 entra en rojo -->
-    <div class="alert-banner" id="alertBanner" role="alert" hidden>
-        <div class="alert-main">
-            <strong id="alertTitle"></strong>
-            <span id="alertText"></span>
-            <button class="icon-btn" id="btnCloseAlert" aria-label="Cerrar">✕</button>
-        </div>
-        <div class="alert-hint" id="alertHint" hidden>
-            <span id="alertHintText"></span>
-            <button class="btn-ghost" id="btnEnableNotif" hidden>Activar notificaciones</button>
-        </div>
-    </div>
-
-    <!-- Aviso breve en pantalla (confirmaciones) -->
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-    <!-- Escenarios del demo: tres puntitos que solo aparecen mientras el demo está activo -->
-    <div class="demo-scenarios" id="demoScenarios" hidden>
-        <button class="scen scen-red" data-scenario="critical" title="Crítico" aria-label="Crítico"></button>
-        <button class="scen scen-yellow" data-scenario="caution" title="Precaución" aria-label="Precaución"></button>
-        <button class="scen scen-green active" data-scenario="normal" title="Normal" aria-label="Normal"></button>
-    </div>
-
-    <!-- Disparador del modo demo: un punto discreto, no un botón visible -->
-    <button class="demo-trigger" id="btnDemo" title="Demo" aria-label="Demo"></button>
-
-    <!-- El orden importa: cada archivo usa a los que están antes que él -->
-    <script src="js/i18n.js?v=8"></script>
-    <script src="js/graph.js?v=8"></script>
-    <script src="js/alerts.js?v=9"></script>
-    <script src="js/records.js?v=8"></script>
-    <script src="js/ui.js?v=9"></script>
-    <script src="js/ble.js?v=8"></script>
-    <script src="js/demo.js?v=10"></script>
-    <script src="js/main.js?v=11"></script>
-    <script src="js/whatsapp.js?v=1"></script>
-    <script src="js/accesibilidad.js?v=1"></script>
-
-    <script>
-    // Revisión final: si un archivo cargó pero no define lo que debe, probablemente es el archivo equivocado
-    (function () {
-        var d = window.__diag;
-        if (!d) return;
-        var checks = {
-            'js/i18n.js': typeof Lang, 'js/graph.js': typeof Graph, 'js/alerts.js': typeof Alerts,
-            'js/records.js': typeof Records, 'js/ui.js': typeof UI, 'js/ble.js': typeof BLE,
-            'js/demo.js': typeof Demo, 'js/main.js': typeof App,
-            'js/accesibilidad.js': typeof Access
-        };
-        for (var f in checks) {
-            if (checks[f] === 'undefined' && !d.failed[f]) {
-                d.show(f + ' no tiene el código esperado (¿se subió el archivo equivocado con ese nombre?)');
+    getIdentification() {
+        const t = this.t();
+        for (const sel of this.ID_SELECTORS) {
+            const el = document.querySelector(sel);
+            if (!el) continue;
+            const raw = (el.value !== undefined && el.tagName === 'INPUT'
+                ? el.value
+                : el.textContent || ''
+            ).replace(/\s+/g, ' ').trim();
+            if (raw && raw !== '--' && raw !== '-') {
+                return `${t.idLabel} ${raw}`;
             }
         }
-    })();
-    </script>
-</body>
-</html>
+
+        const btnId = this.$('btnChangeId');
+        if (btnId) {
+            const txt = this.label(btnId);
+            if (txt) return `${t.idLabel}: ${txt}`;
+        }
+
+        return `${t.idLabel} ${t.noId}`;
+    },
+
+    getStatusText() {
+        const t = this.t();
+        const el = document.querySelector(this.STATUS_SELECTOR);
+        if (!el) return '';
+        const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        return txt ? `${t.statusLabel}: ${txt}` : '';
+    },
+
+    spo2Number() {
+        const el = this.$('spo2Value');
+        if (!el) return null;
+        const raw = (el.textContent || el.value || '').replace(',', '.').trim();
+        const m = raw.match(/\d+(?:\.\d+)?/);
+        if (!m) return null;
+        const n = parseFloat(m[0]);
+        return (n > 0 && n <= 100) ? Math.round(n) : null;
+    },
+
+    bpmNumber() {
+        const el = this.$('bpmValue');
+        if (!el) return null;
+        const raw = (el.textContent || el.value || '').replace(',', '.').trim();
+        const m = raw.match(/\d+(?:\.\d+)?/);
+        if (!m) return null;
+        const n = parseFloat(m[0]);
+        return n > 0 ? Math.round(n) : null;
+    },
+
+    levelOf(el) {
+        if (!el) return null;
+        const target = el.closest('.spo2-circle, .bpm-card, [class*="level-"]') || el;
+        for (const l of ['red', 'yellow', 'green']) {
+            if (
+                target.classList.contains('level-' + l) ||
+                el.classList.contains('level-' + l) ||
+                target.dataset.level === l
+            ) {
+                return l;
+            }
+        }
+        return null;
+    },
+
+    phrase(kind, val, level) {
+        const t = this.t();
+        const base = kind === 'spo2'
+            ? `${t.spo2} ${val} ${t.pct}`
+            : `${t.bpm} ${val} ${t.unit}`;
+        return level ? `${base}, ${t.level[level]}` : base;
+    },
+
+    buildVitalsSummary() {
+        const t = this.t();
+        const s = this.spo2Number();
+        const b = this.bpmNumber();
+        const spo2El = document.querySelector('.spo2-circle') || this.$('spo2Value');
+        const bpmEl = document.querySelector('.bpm-card') || this.$('bpmValue');
+
+        const spo2Text = s != null
+            ? this.phrase('spo2', s, this.levelOf(spo2El))
+            : `${t.spo2} ${t.none}`;
+
+        const bpmText = b != null
+            ? this.phrase('bpm', b, this.levelOf(bpmEl))
+            : `${t.bpm} ${t.none}`;
+
+        return `${spo2Text}. ${bpmText}`;
+    },
+
+    readScreen(includeButtons = true) {
+        const t = this.t();
+        const parts = [];
+
+        const banner = this.$('alertBanner');
+        if (banner && !banner.hidden) {
+            const title = (this.$('alertTitle')?.textContent || '').trim();
+            const body = (this.$('alertText')?.textContent || '').trim();
+            if (title || body) parts.push(`${title}. ${body}`.trim());
+        }
+
+        const titleEl = this.$('title');
+        if (titleEl && titleEl.textContent.trim()) {
+            parts.push(titleEl.textContent.trim());
+        }
+
+        parts.push(this.getIdentification());
+
+        const status = this.getStatusText();
+        if (status) parts.push(status);
+
+        const panel = ['idPanel', 'historyPanel'].map(i => this.$(i)).find(p => p && !p.hidden);
+        if (panel) {
+            const panelText = (panel.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 260);
+            if (panelText) parts.push(panelText);
+            if (includeButtons) {
+                const btns = this.visibleButtons(panel);
+                if (btns.length) parts.push(`${t.buttons}: ${btns.join(', ')}`);
+            }
+        } else {
+            parts.push(this.buildVitalsSummary());
+            if (includeButtons) {
+                const container = document.querySelector('.main-container') || document.body;
+                const btns = this.visibleButtons(container);
+                if (btns.length) parts.push(`${t.buttons}: ${btns.join(', ')}`);
+            }
+        }
+
+        this.speak(parts.filter(Boolean).join('. '));
+    },
+
+    periodicTick() {
+        const now = Date.now();
+
+        for (const kind of ['spo2', 'bpm']) {
+            const stKind = this.st[kind];
+            const el = document.querySelector(kind === 'spo2' ? '.spo2-circle' : '.bpm-card');
+            const val = kind === 'spo2' ? this.spo2Number() : this.bpmNumber();
+            const level = this.levelOf(el);
+            const prevLevel = stKind.level;
+
+            stKind.val = val;
+            stKind.level = level;
+
+            if (val && level === 'red') {
+                if (prevLevel !== 'red' || now - stKind.lastRed >= this.RED_REPEAT_MS) {
+                    stKind.lastRed = now;
+                    this.speak(`${this.t().critical} ${this.phrase(kind, val, 'red')}`);
+                    return;
+                }
+            } else {
+                stKind.lastRed = 0;
+            }
+        }
+
+        if (!this.on) return;
+        if (now - this.st.lastPeriodic >= this.PERIODIC_MS) {
+            this.st.lastPeriodic = now;
+            const summary = `${this.getIdentification()}. ${this.buildVitalsSummary()}`;
+            this.speak(summary);
+        }
+    },
+
+    toggle() {
+        this.on = !this.on;
+        const b = this.$('btnA11y');
+        if (b) {
+            b.classList.toggle('on', this.on);
+            b.setAttribute('aria-pressed', String(this.on));
+        }
+
+        if (this.on) {
+            this.st.lastPeriodic = Date.now();
+            this.speak(this.t().on);
+            setTimeout(() => this.readScreen(true), 800);
+        } else {
+            speechSynthesis.cancel();
+            this.speak(this.t().off);
+        }
+    },
+
+    init() {
+        const btn = this.$('btnA11y');
+        if (btn) btn.addEventListener('click', () => this.toggle());
+
+        document.addEventListener('focusin', e => {
+            const el = e.target;
+            if (!this.on || !el.matches('button, input, select') || el.matches(this.SKIP)) return;
+            this.speak(this.label(el));
+        });
+
+        setInterval(() => this.periodicTick(), 2000);
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => Access.init());
