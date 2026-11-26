@@ -18,7 +18,7 @@ const Access = {
     },
     $(id) { return document.getElementById(id); },
 
-    speak(text, urgent) {
+    speak(text) {
         if (!('speechSynthesis' in window) || !text) return;
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
@@ -65,10 +65,11 @@ const Access = {
         this.speak(parts.join('. '));
     },
 
-    // Alerta crítica: se dice sola al entrar en rojo y se repite cada 30 s
+    // Alerta crítica: suena siempre (con ♿ apagado también) al entrar en rojo
+    // y se repite cada 30 s mientras siga en rojo
     watchCritical(kind, el) {
+        if (!el) return;
         const check = () => {
-            if (!this.on) return;
             if (!el.classList.contains('level-red')) { this.lastRed[kind] = 0; return; }
             const now = Date.now();
             if (now - this.lastRed[kind] < this.REPEAT_MS) return;
@@ -97,7 +98,7 @@ const Access = {
 
     init() {
         this.$('btnA11y').addEventListener('click', () => this.toggle());
-        // Lee el botón o campo que recibe el foco
+        // Lee el botón o campo que recibe el foco (solo con ♿ activado)
         document.addEventListener('focusin', e => {
             const el = e.target;
             if (!this.on || !el.matches('button, input, select') || el.matches(this.SKIP)) return;
