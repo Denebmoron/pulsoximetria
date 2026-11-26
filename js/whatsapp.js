@@ -1,8 +1,7 @@
 // js/whatsapp.js
 const WhatsAppAPI = {
     async sendAlert(spo2, bpm, patientId) {
-        // Pega aquí la URL exacta que te dio Cloudflare
-        const workerUrl = "https://pulsoximetria.sofia-paezhot.worker.dev";
+        const workerUrl = "pulsoximetria.sofia-paezhot.workers.dev/";
 
         try {
             const response = await fetch(workerUrl, {
